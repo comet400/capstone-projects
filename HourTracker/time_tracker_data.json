@@ -5,7 +5,19 @@
       "project_start": "2026-01-22T22:20:13.145463",
       "last_thursday": "2026-01-22",
       "logs": []
+    },
+    "qm5836": {
+      "hours_balance": 16,
+      "project_start": "2026-01-22T22:22:37.128899",
+      "last_thursday": null,
+      "logs": []
+    },
+    "lv5441": {
+      "hours_balance": 16,
+      "project_start": "2026-01-22T22:23:00.479180",
+      "last_thursday": null,
+      "logs": []
     }
   },
-  "last_saved": "2026-01-22T22:20:13.317599"
+  "last_saved": "2026-01-22T22:23:00.479627"
 }

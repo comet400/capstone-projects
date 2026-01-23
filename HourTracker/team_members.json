@@ -3,5 +3,15 @@
     "name": "Default User",
     "email": "",
     "role": "Team Member"
+  },
+  "qm5836": {
+    "name": "Quang Minh Vu",
+    "role": "Developer",
+    "created": "2026-01-22T22:22:37.128889"
+  },
+  "lv5441": {
+    "name": "Lukas Fukuoka Vieira",
+    "role": "Developer",
+    "created": "2026-01-22T22:23:00.479169"
   }
 }
