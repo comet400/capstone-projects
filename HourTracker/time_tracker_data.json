@@ -1,11 +1,5 @@
 {
   "members": {
-    "default": {
-      "hours_balance": 16,
-      "project_start": "2026-01-22T22:20:13.145463",
-      "last_thursday": "2026-01-22",
-      "logs": []
-    },
     "qm5836": {
       "hours_balance": 16,
       "project_start": "2026-01-22T22:22:37.128899",
@@ -31,9 +25,15 @@
     "vn0335": {
       "hours_balance": 16,
       "project_start": "2026-01-22T22:48:03.117865",
+      "last_thursday": "2026-01-22",
+      "logs": []
+    },
+    "rw3110": {
+      "hours_balance": 16,
+      "project_start": "2026-01-23T00:51:34.183556",
       "last_thursday": null,
       "logs": []
     }
   },
-  "last_saved": "2026-01-22T22:49:23.187692"
+  "last_saved": "2026-01-23T00:51:34.184015"
 }

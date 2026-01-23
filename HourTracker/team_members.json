@@ -1,9 +1,4 @@
 {
-  "default": {
-    "name": "Default User",
-    "email": "",
-    "role": "Team Member"
-  },
   "qm5836": {
     "name": "Quang Minh Vu",
     "role": "Developer",
@@ -18,5 +13,10 @@
     "name": "Valentyn Novosydliuk",
     "role": "Developer",
     "created": "2026-01-22T22:48:03.117854"
+  },
+  "rw3110": {
+    "name": "Robin Wagubi",
+    "role": "Developer",
+    "created": "2026-01-23T00:51:34.183546"
   }
 }
