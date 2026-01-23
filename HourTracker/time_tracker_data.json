@@ -9,15 +9,31 @@
     "qm5836": {
       "hours_balance": 16,
       "project_start": "2026-01-22T22:22:37.128899",
-      "last_thursday": null,
+      "last_thursday": "2026-01-22",
       "logs": []
     },
     "lv5441": {
-      "hours_balance": 16,
+      "hours_balance": 13.0,
       "project_start": "2026-01-22T22:23:00.479180",
+      "last_thursday": "2026-01-22",
+      "logs": [
+        {
+          "timestamp": "2026-01-22T22:49:23.187678",
+          "type": "manual",
+          "hours": 3.0,
+          "description": "Made several logo mock ups, up tof 5 different designs with variants in colors and style, also decided the true name for the app will be \"Pocket Coach\" for now",
+          "project": "Branding and Design",
+          "balance_after": 13.0,
+          "member": "lv5441"
+        }
+      ]
+    },
+    "vn0335": {
+      "hours_balance": 16,
+      "project_start": "2026-01-22T22:48:03.117865",
       "last_thursday": null,
       "logs": []
     }
   },
-  "last_saved": "2026-01-22T22:23:00.479627"
+  "last_saved": "2026-01-22T22:49:23.187692"
 }
