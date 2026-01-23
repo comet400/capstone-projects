@@ -7,7 +7,7 @@
       "logs": []
     },
     "lv5441": {
-      "hours_balance": 13.0,
+      "hours_balance": 12.0,
       "project_start": "2026-01-22T22:23:00.479180",
       "last_thursday": "2026-01-22",
       "logs": [
@@ -18,6 +18,15 @@
           "description": "Made several logo mock ups, up tof 5 different designs with variants in colors and style, also decided the true name for the app will be \"Pocket Coach\" for now",
           "project": "Branding and Design",
           "balance_after": 13.0,
+          "member": "lv5441"
+        },
+        {
+          "timestamp": "2026-01-23T00:53:54.793511",
+          "type": "manual",
+          "hours": 1.0,
+          "description": "I quickly developed an hour tracking app for us to document our progress, remaining hours and tasks",
+          "project": "",
+          "balance_after": 12.0,
           "member": "lv5441"
         }
       ]
@@ -35,5 +44,5 @@
       "logs": []
     }
   },
-  "last_saved": "2026-01-23T00:51:34.184015"
+  "last_saved": "2026-01-23T00:53:54.793526"
 }
