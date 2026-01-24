@@ -40,9 +40,9 @@
     "rw3110": {
       "hours_balance": 16,
       "project_start": "2026-01-23T00:51:34.183556",
-      "last_thursday": null,
+      "last_thursday": "2026-01-22",
       "logs": []
     }
   },
-  "last_saved": "2026-01-23T00:53:54.793526"
+  "last_saved": "2026-01-23T01:58:02.131425"
 }
