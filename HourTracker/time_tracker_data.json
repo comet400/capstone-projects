@@ -7,7 +7,7 @@
       "logs": []
     },
     "lv5441": {
-      "hours_balance": 12.0,
+      "hours_balance": 6.0,
       "project_start": "2026-01-22T22:23:00.479180",
       "last_thursday": "2026-01-22",
       "logs": [
@@ -28,6 +28,15 @@
           "project": "",
           "balance_after": 12.0,
           "member": "lv5441"
+        },
+        {
+          "timestamp": "2026-01-27T15:06:47.633259",
+          "type": "manual",
+          "hours": 6.0,
+          "description": "Prepared several UI mock ups.\nUp to 8 pages with Log in\nCreate account\nCamera functions\nUI system design\nAnd more",
+          "project": "Branding and Design",
+          "balance_after": 6.0,
+          "member": "lv5441"
         }
       ]
     },
@@ -44,5 +53,5 @@
       "logs": []
     }
   },
-  "last_saved": "2026-01-23T01:58:02.131425"
+  "last_saved": "2026-01-27T15:06:47.633275"
 }
