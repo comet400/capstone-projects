@@ -1,15 +1,60 @@
 {
   "members": {
     "qm5836": {
-      "hours_balance": 16,
+      "hours_balance": 23.815833333333334,
       "project_start": "2026-01-22T22:22:37.128899",
-      "last_thursday": "2026-01-22",
-      "logs": []
+      "last_thursday": "2026-01-29",
+      "logs": [
+        {
+          "timestamp": "2026-01-23T20:36:42.916919",
+          "type": "timer",
+          "hours": 1.4522222222222223,
+          "description": "test openpose function and how it work,make functional overview and make UC diagram for user login use case",
+          "project": "",
+          "balance_after": 14.547777777777778,
+          "member": "qm5836"
+        },
+        {
+          "timestamp": "2026-01-23T23:21:18.539360",
+          "type": "timer",
+          "hours": 0.6166666666666667,
+          "description": "Finish the first use case for user identity management",
+          "project": "",
+          "balance_after": 13.931111111111111,
+          "member": "qm5836"
+        },
+        {
+          "timestamp": "2026-01-27T14:17:07.247504",
+          "type": "timer",
+          "hours": 3.651388888888889,
+          "description": "finishing UC-01 description and everything for\n UC-02",
+          "project": "",
+          "balance_after": 10.279722222222222,
+          "member": "qm5836"
+        },
+        {
+          "timestamp": "2026-01-27T16:47:11.815965",
+          "type": "timer",
+          "hours": 2.463888888888889,
+          "description": "finish the UC-03 for the Ai analysis and generate feedback",
+          "project": "",
+          "balance_after": 7.815833333333334,
+          "member": "qm5836"
+        },
+        {
+          "timestamp": "2026-01-29T11:21:35.277607",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-01-29",
+          "balance_after": 23.815833333333334,
+          "member": "qm5836"
+        }
+      ]
     },
     "lv5441": {
-      "hours_balance": 12.0,
+      "hours_balance": 28.0,
       "project_start": "2026-01-22T22:23:00.479180",
-      "last_thursday": "2026-01-22",
+      "last_thursday": "2026-01-29",
       "logs": [
         {
           "timestamp": "2026-01-22T22:49:23.187678",
@@ -28,21 +73,47 @@
           "project": "",
           "balance_after": 12.0,
           "member": "lv5441"
+        },
+        {
+          "timestamp": "2026-01-29T11:21:35.277616",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-01-29",
+          "balance_after": 28.0,
+          "member": "lv5441"
         }
       ]
     },
     "vn0335": {
-      "hours_balance": 16,
+      "hours_balance": 32,
       "project_start": "2026-01-22T22:48:03.117865",
-      "last_thursday": "2026-01-22",
-      "logs": []
+      "last_thursday": "2026-01-29",
+      "logs": [
+        {
+          "timestamp": "2026-01-29T11:21:35.277620",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-01-29",
+          "balance_after": 32,
+          "member": "vn0335"
+        }
+      ]
     },
     "rw3110": {
-      "hours_balance": 16,
+      "hours_balance": 32,
       "project_start": "2026-01-23T00:51:34.183556",
-      "last_thursday": null,
-      "logs": []
+      "last_thursday": "2026-01-29",
+      "logs": [
+        {
+          "timestamp": "2026-01-29T11:21:35.277622",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-01-29",
+          "balance_after": 32,
+          "member": "rw3110"
+        }
+      ]
     }
   },
-  "last_saved": "2026-01-23T00:53:54.793526"
+  "last_saved": "2026-01-29T12:01:38.859027"
 }
