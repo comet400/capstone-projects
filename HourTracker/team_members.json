@@ -1,22 +1,7 @@
 {
-  "qm5836": {
-    "name": "Quang Minh Vu",
-    "role": "Developer",
-    "created": "2026-01-22T22:22:37.128889"
-  },
-  "lv5441": {
-    "name": "Lukas Fukuoka Vieira",
-    "role": "Developer",
-    "created": "2026-01-22T22:23:00.479169"
-  },
-  "vn0335": {
-    "name": "Valentyn Novosydliuk",
-    "role": "Developer",
-    "created": "2026-01-22T22:48:03.117854"
-  },
-  "rw3110": {
-    "name": "Robin Wagubi",
-    "role": "Developer",
-    "created": "2026-01-23T00:51:34.183546"
+  "default": {
+    "name": "Default User",
+    "email": "",
+    "role": "Team Member"
   }
 }

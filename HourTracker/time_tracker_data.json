@@ -7,7 +7,7 @@
       "logs": []
     },
     "lv5441": {
-      "hours_balance": 6.0,
+      "hours_balance": 4.0,
       "project_start": "2026-01-22T22:23:00.479180",
       "last_thursday": "2026-01-22",
       "logs": [
@@ -37,6 +37,24 @@
           "project": "Branding and Design",
           "balance_after": 6.0,
           "member": "lv5441"
+        },
+        {
+          "timestamp": "2026-01-28T22:29:11.119364",
+          "type": "manual",
+          "hours": 1.0,
+          "description": "Prepared several entries for the project such as scope, UI systems, software and hardware interface among other things",
+          "project": "Documentation",
+          "balance_after": 5.0,
+          "member": "lv5441"
+        },
+        {
+          "timestamp": "2026-01-28T22:30:39.042080",
+          "type": "manual",
+          "hours": 1.0,
+          "description": "formatted and helped fellow teammates submit the SRS",
+          "project": "Documentation",
+          "balance_after": 4.0,
+          "member": "lv5441"
         }
       ]
     },
@@ -53,5 +71,5 @@
       "logs": []
     }
   },
-  "last_saved": "2026-01-27T15:06:47.633275"
+  "last_saved": "2026-01-28T22:38:51.436826"
 }
