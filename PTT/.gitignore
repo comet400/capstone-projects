@@ -1,0 +1,116 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# =========================
+# Jupyter / Notebooks
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Logs & temp
+# =========================
+*.log
+*.tmp
+*.bak
+*.cache
+.cache/
+tmp/
+temp/
+
+# =========================
+# Media / datasets
+# =========================
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.jpg
+*.jpeg
+*.png
+*.bmp
+
+data/
+datasets/
+videos/
+captures/
+
+# =========================
+# Model weights (DO NOT COMMIT)
+# =========================
+models/
+*.pt          # YOLO weights
+*.onnx
+*.caffemodel
+*.pb
+*.tflite
+*.weights
+
+# MediaPipe internal cache
+.mediapipe/
+
+# =========================
+# OpenPose specific
+# =========================
+openpose/
+*_pose_iter_*.caffemodel
+pose_deploy_*.prototxt
+
+# =========================
+# Benchmark outputs
+# =========================
+*.csv
+*.jsonl
+results/
+outputs/
+benchmarks/
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+*.key
+*.pem
+secrets/
+
+# =========================
+# Packaging
+# =========================
+pip-wheel-metadata/
+*.whl
+
+# =========================
+# Misc
+# =========================
+coverage/
+htmlcov/
+.pytest_cache/
+.mypy_cache/
