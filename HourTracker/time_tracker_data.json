@@ -102,6 +102,7 @@
     "rw3110": {
       "hours_balance": 32,
       "project_start": "2026-01-23T00:51:34.183556",
+<<<<<<< Updated upstream
       "last_thursday": "2026-01-29",
       "logs": [
         {
@@ -116,4 +117,11 @@
     }
   },
   "last_saved": "2026-01-29T12:41:38.964553"
+=======
+      "last_thursday": "2026-01-22",
+      "logs": []
+    }
+  },
+  "last_saved": "2026-01-23T18:40:59.259944"
+>>>>>>> Stashed changes
 }
