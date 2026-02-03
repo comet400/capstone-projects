@@ -1,7 +1,7 @@
 {
   "members": {
     "qm5836": {
-      "hours_balance": 23.815833333333334,
+      "hours_balance": 21.548333333333332,
       "project_start": "2026-01-22T22:22:37.128899",
       "last_thursday": "2026-01-29",
       "logs": [
@@ -47,6 +47,24 @@
           "hours": 16,
           "description": "Weekly 16-hour allocation added on 2026-01-29",
           "balance_after": 23.815833333333334,
+          "member": "qm5836"
+        },
+        {
+          "timestamp": "2026-01-29T13:09:27.539999",
+          "type": "manual",
+          "hours": 1.6,
+          "description": "Finish testing movenet+openCV, pretty lagging but can improved and start the azure board",
+          "project": "",
+          "balance_after": 22.215833333333332,
+          "member": "qm5836"
+        },
+        {
+          "timestamp": "2026-01-30T15:18:49.429600",
+          "type": "timer",
+          "hours": 0.6675,
+          "description": "testing and research for 60FPS when using movenet+opencv",
+          "project": "",
+          "balance_after": 21.548333333333332,
           "member": "qm5836"
         }
       ]
@@ -115,5 +133,5 @@
       ]
     }
   },
-  "last_saved": "2026-01-29T12:41:38.964553"
+  "last_saved": "2026-01-30T15:18:49.429624"
 }
