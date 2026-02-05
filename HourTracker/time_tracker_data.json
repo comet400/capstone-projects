@@ -118,7 +118,7 @@
       ]
     },
     "rw3110": {
-      "hours_balance": 32,
+      "hours_balance": 20.610833333333336,
       "project_start": "2026-01-23T00:51:34.183556",
       "last_thursday": "2026-01-29",
       "logs": [
@@ -129,9 +129,54 @@
           "description": "Weekly 16-hour allocation added on 2026-01-29",
           "balance_after": 32,
           "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-01-29T13:45:13.002591",
+          "type": "timer",
+          "hours": 0.9786111111111111,
+          "description": "CREATED DEMO LOGIN PAGE FOR THE APP JUST TO UNDERSTAND HOW YEAH",
+          "project": "",
+          "balance_after": 31.02138888888889,
+          "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-01-31T16:31:18.379127",
+          "type": "timer",
+          "hours": 1.326111111111111,
+          "description": "created home page component and basic home page layout",
+          "project": "",
+          "balance_after": 29.69527777777778,
+          "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-02-01T22:17:36.896922",
+          "type": "timer",
+          "hours": 1.5583333333333333,
+          "description": "added navigation (top and bottom to the home screen, separated the layout into sections like works, progress and profile",
+          "project": "",
+          "balance_after": 28.136944444444445,
+          "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-02-02T00:44:15.802069",
+          "type": "timer",
+          "hours": 0.5261111111111111,
+          "description": "worked on the activities and camera page. Basic layouts made",
+          "project": "",
+          "balance_after": 27.610833333333336,
+          "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-02-02T00:45:28.771848",
+          "type": "manual",
+          "hours": 7.0,
+          "description": "Section 1 for SRS work. 2 UC diagrams and descriptions and splitting work equally",
+          "project": "",
+          "balance_after": 20.610833333333336,
+          "member": "rw3110"
         }
       ]
     }
   },
-  "last_saved": "2026-01-30T15:18:49.429624"
+  "last_saved": "2026-01-29T12:41:38.964553"
 }
