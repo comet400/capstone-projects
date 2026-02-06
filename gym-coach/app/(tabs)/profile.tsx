@@ -7,10 +7,13 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 const PROFILE_IMAGE = require("@/assets/images/home/featured.jpg");
 
 export default function ProfileScreen() {
+  const router = useRouter();
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header: menu | mini profile | premium */}
@@ -39,7 +42,10 @@ export default function ProfileScreen() {
 
       {/* Action buttons grid 2x2 */}
       <View style={styles.grid}>
-        <Pressable style={[styles.gridBtn, styles.gridBtnBlue]}>
+        <Pressable
+          style={[styles.gridBtn, styles.gridBtnBlue]}
+          onPress={() => router.push("/past-workouts")}
+        >
           <Ionicons name="barbell-outline" size={84} color="#0D0F10" />
           <Text style={styles.gridBtnText}>Past Workouts</Text>
         </Pressable>
@@ -51,7 +57,10 @@ export default function ProfileScreen() {
           <Ionicons name="bar-chart-outline" size={84} color="#0D0F10" />
           <Text style={styles.gridBtnText}>Progress</Text>
         </Pressable>
-        <Pressable style={[styles.gridBtn, styles.gridBtnLime]}>
+        <Pressable
+          style={[styles.gridBtn, styles.gridBtnLime]}
+          onPress={() => router.push("/highlights")}
+        >
           <Ionicons name="sparkles-outline" size={84} color="#0D0F10" />
           <Text style={styles.gridBtnText}>Highlights</Text>
         </Pressable>

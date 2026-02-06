@@ -8,8 +8,11 @@ import {
   Pressable,
   ScrollView,
 } from "react-native";
+import { useRouter } from "expo-router";
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
@@ -70,7 +73,10 @@ export default function HomeScreen() {
       </View>
 
       {/* Upgrade */}
-      <Pressable style={styles.upgrade}>
+      <Pressable
+        style={styles.upgrade}
+        onPress={() => router.push("/paid-plan-tab")}
+      >
         <Text style={styles.upgradeText}>UPGRADE YOUR PLAN</Text>
       </Pressable>
 

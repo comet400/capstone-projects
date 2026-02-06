@@ -1,16 +1,8 @@
 import React from "react";
 import { Tabs } from "expo-router";
-import { View, Image, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const ICONS = {
-  home: require("@/assets/images/layout/tab-home.png"),
-  activities: require("@/assets/images/layout/tab-activities.png"),
-  workouts: require("@/assets/images/layout/tab-workout.png"),
-  profile: require("@/assets/images/layout/tab-profile.png"),
-  camera: require("@/assets/images/layout/camera.png"),
-};
-
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -20,7 +12,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#2AA8FF",
-        tabBarInactiveTintColor: "#FFFFFF",
+        tabBarInactiveTintColor: "#9B9B9B",
         tabBarLabelStyle: {
           fontSize: 11,
           marginTop: -2,
@@ -49,8 +41,11 @@ export default function TabsLayout() {
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ focused }) => (
-            <TabIcon source={ICONS.home} focused={focused} />
+          tabBarIcon: ({ focused, color }) => (
+            <TabIcon
+              name={focused ? "home" : "home-outline"}
+              focused={focused}
+            />
           ),
         }}
       />
@@ -60,7 +55,10 @@ export default function TabsLayout() {
         options={{
           title: "Activities",
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={ICONS.activities} focused={focused} />
+            <TabIcon
+              name={focused ? "calendar" : "calendar-outline"}
+              focused={focused}
+            />
           ),
         }}
       />
@@ -79,7 +77,10 @@ export default function TabsLayout() {
         options={{
           title: "Workout",
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={ICONS.workouts} focused={focused} />
+            <TabIcon
+              name={focused ? "barbell" : "barbell-outline"}
+              focused={focused}
+            />
           ),
         }}
       />
@@ -89,7 +90,10 @@ export default function TabsLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={ICONS.profile} focused={focused} />
+            <TabIcon
+              name={focused ? "person" : "person-outline"}
+              focused={focused}
+            />
           ),
         }}
       />
@@ -97,38 +101,37 @@ export default function TabsLayout() {
   );
 }
 
-function TabIcon({ source, focused }: { source: any; focused: boolean }) {
+function TabIcon({
+  name,
+  focused,
+}: {
+  name: string;
+  focused: boolean;
+}) {
   return (
-    <Image
-      source={source}
-      style={[
-        styles.icon,
-        { opacity: focused ? 1 : 0.65 },
-      ]}
-      resizeMode="contain"
-    />
+    <View style={styles.iconContainer}>
+      <Ionicons
+        name={name as any}
+        size={24}
+        color={focused ? "#2AA8FF" : "#9B9B9B"}
+      />
+      {focused && <View style={styles.activeIndicator} />}
+    </View>
   );
 }
 
 function CameraTabIcon({ focused }: { focused: boolean }) {
   return (
     <View style={styles.cameraWrap}>
-      <View style={styles.cameraRing}>
+      <View style={[styles.cameraRing, focused && styles.cameraRingActive]}>
         <View style={styles.cameraInner}>
-          <Image
-            source={ICONS.camera}
-            style={[
-              styles.cameraIcon,
-              { opacity: focused ? 1 : 0.65 },
-            ]}
-            resizeMode="contain"
+          <Ionicons
+            name="camera"
+            size={24}
+            color={focused ? "#0D0F10" : "#9B9B9B"}
           />
         </View>
       </View>
-
-      {/* Optional badge later (ads / plan)
-      <View style={styles.badgeDot} />
-      */}
     </View>
   );
 }
@@ -152,10 +155,20 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
 
-  icon: {
-    width: 22,
-    height: 22,
-    marginBottom: 2,
+  iconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    width: 32,
+    height: 32,
+  },
+  activeIndicator: {
+    position: "absolute",
+    bottom: -8,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#2AA8FF",
   },
 
   cameraWrap: {
@@ -172,6 +185,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#BFFF5A",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#BFFF5A",
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  cameraRingActive: {
+    backgroundColor: "#BFFF5A",
+    shadowOpacity: 0.5,
+    transform: [{ scale: 1.05 }],
   },
   cameraInner: {
     width: 52,
@@ -180,10 +203,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#151515",
     alignItems: "center",
     justifyContent: "center",
-  },
-  cameraIcon: {
-    width: 26,
-    height: 26,
   },
 
   badgeDot: {
