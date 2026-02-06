@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import { View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { HapticTab } from "../../components/haptic-tab";
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -11,6 +12,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarButton: HapticTab,
         tabBarActiveTintColor: "#2AA8FF",
         tabBarInactiveTintColor: "#9B9B9B",
         tabBarLabelStyle: {
@@ -24,7 +26,7 @@ export default function TabsLayout() {
           {
             bottom: 14 + insets.bottom,
             paddingBottom: 8,
-            height: 74 + insets.bottom,
+            height: 74,
           },
         ],
       }}
@@ -115,7 +117,6 @@ function TabIcon({
         size={24}
         color={focused ? "#2AA8FF" : "#9B9B9B"}
       />
-      {focused && <View style={styles.activeIndicator} />}
     </View>
   );
 }
@@ -124,7 +125,12 @@ function CameraTabIcon({ focused }: { focused: boolean }) {
   return (
     <View style={styles.cameraWrap}>
       <View style={[styles.cameraRing, focused && styles.cameraRingActive]}>
-        <View style={styles.cameraInner}>
+        <View
+          style={[
+            styles.cameraInner,
+            focused && { backgroundColor: "#BFFF5A" },
+          ]}
+        >
           <Ionicons
             name="camera"
             size={24}
