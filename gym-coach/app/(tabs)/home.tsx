@@ -1,4 +1,3 @@
-
 import {
   View,
   Text,
@@ -9,6 +8,8 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { Colors, Spacing, Typography } from "@/constants/design";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -16,26 +17,13 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
-      <View style={styles.header}>
-        <Pressable style={styles.menuBtn}>
-          <Text style={styles.menuIcon}>≡</Text>
-        </Pressable>
-
-        <View>
-          <Text style={styles.hello}>Hello!</Text>
-          <Text style={styles.name}>MORGAN MAXWELL</Text>
-        </View>
-
-        <Pressable style={styles.crownBtn}>
-          <Text style={styles.crown}>👑</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader subtitle="Hello!" title="MORGAN MAXWELL" showAvatar={false} />
 
       {/* Search */}
       <View style={styles.searchWrap}>
         <TextInput
           placeholder="Search workout, program, etc"
-          placeholderTextColor="#9B9B9B"
+          placeholderTextColor={Colors.textSecondary}
           style={styles.search}
         />
       </View>
@@ -133,47 +121,17 @@ function Filter({ label, active }: { label: string; active?: boolean }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
-    paddingHorizontal: 16,
+    backgroundColor: Colors.background,
+    paddingHorizontal: Spacing.screenPadding,
   },
 
-  header: {
-    marginTop: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  menuBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#1E1E1E",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  menuIcon: { color: "#fff", fontSize: 20 },
-
-  hello: { color: "#9B9B9B", fontSize: 12 },
-  name: { color: "#fff", fontSize: 14, fontWeight: "700" },
-
-  crownBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#2AA8FF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  crown: { fontSize: 18 },
-
-  searchWrap: { marginTop: 16 },
+  searchWrap: { marginTop: Spacing.lg },
   search: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     padding: 14,
-    color: "#fff",
-    fontSize: 14,
+    color: Colors.text,
+    fontSize: Typography.sizes.md,
   },
 
   sectionHeader: {
@@ -181,9 +139,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
   },
-  sectionTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  viewAll: { color: "#9B9B9B", fontSize: 12 },
+  sectionTitle: {
+    color: Colors.text,
+    fontSize: Typography.sizes.lg,
+    fontWeight: "700"
+  },
+  viewAll: {
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm
+  },
 
   programCard: {
     width: 140,
@@ -201,11 +167,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
   },
-  filterActive: { backgroundColor: "#2AA8FF" },
-  filterText: { color: "#9B9B9B", fontSize: 12 },
-  filterTextActive: { color: "#fff", fontWeight: "700" },
+  filterActive: { backgroundColor: Colors.primary },
+  filterText: { color: Colors.textSecondary, fontSize: Typography.sizes.sm },
+  filterTextActive: { color: Colors.text, fontWeight: "700" },
 
   featured: {
     marginTop: 18,
@@ -223,28 +189,28 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     backgroundColor: "rgba(0,0,0,0.55)",
   },
-  featuredTitle: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  featuredSub: { color: "#CFCFCF", fontSize: 11 },
+  featuredTitle: { color: Colors.text, fontSize: Typography.sizes.md, fontWeight: "700" },
+  featuredSub: { color: "#CFCFCF", fontSize: Typography.sizes.xs },
 
   playBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#2AA8FF",
+    backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  play: { color: "#fff", fontSize: 14 },
+  play: { color: Colors.text, fontSize: 14 },
 
   upgrade: {
     marginTop: 18,
-    backgroundColor: "#BFFF5A",
+    backgroundColor: Colors.secondary,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
   },
   upgradeText: {
-    color: "#0D0F10",
+    color: Colors.iconDark,
     fontWeight: "800",
     fontSize: 13,
   },

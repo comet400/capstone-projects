@@ -4,6 +4,7 @@ import { View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HapticTab } from "../../components/haptic-tab";
+import { Colors, Typography, IconSizes } from "@/constants/design";
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -13,13 +14,13 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarActiveTintColor: "#2AA8FF",
-        tabBarInactiveTintColor: "#9B9B9B",
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textSecondary,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: Typography.sizes.xs,
           marginTop: -2,
           marginBottom: 6,
-          fontWeight: "600",
+          fontWeight: Typography.weights.semibold,
         },
         tabBarStyle: [
           styles.tabBar,
@@ -114,8 +115,8 @@ function TabIcon({
     <View style={styles.iconContainer}>
       <Ionicons
         name={name as any}
-        size={24}
-        color={focused ? "#2AA8FF" : "#9B9B9B"}
+        size={IconSizes.lg}
+        color={focused ? Colors.primary : Colors.textSecondary}
       />
     </View>
   );
@@ -128,13 +129,13 @@ function CameraTabIcon({ focused }: { focused: boolean }) {
         <View
           style={[
             styles.cameraInner,
-            focused && { backgroundColor: "#BFFF5A" },
+            focused && { backgroundColor: Colors.secondary },
           ]}
         >
           <Ionicons
             name="camera"
-            size={24}
-            color={focused ? "#0D0F10" : "#9B9B9B"}
+            size={IconSizes.lg}
+            color={focused ? Colors.iconDark : Colors.textSecondary}
           />
         </View>
       </View>

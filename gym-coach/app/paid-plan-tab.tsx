@@ -7,6 +7,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { Colors, Spacing, Typography, IconSizes } from "@/constants/design";
 
 const PLANS = [
   {
@@ -63,7 +64,7 @@ export default function PaidPlanTabScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={IconSizes.lg} color={Colors.icon} />
         </Pressable>
         <Text style={styles.headerTitle}>Choose Your Plan</Text>
         <View style={{ width: 40 }} />
@@ -71,7 +72,7 @@ export default function PaidPlanTabScreen() {
 
       {/* Premium Badge */}
       <View style={styles.premiumBadge}>
-        <Ionicons name="diamond" size={24} color="#BFFF5A" />
+        <Ionicons name="diamond" size={IconSizes.lg} color={Colors.secondary} />
         <Text style={styles.premiumText}>Unlock Premium Features</Text>
       </View>
 
@@ -101,8 +102,8 @@ export default function PaidPlanTabScreen() {
               <View key={idx} style={styles.featureRow}>
                 <Ionicons
                   name="checkmark-circle"
-                  size={20}
-                  color={plan.popular ? "#BFFF5A" : "#2AA8FF"}
+                  size={IconSizes.md}
+                  color={plan.popular ? Colors.secondary : Colors.primary}
                 />
                 <Text style={styles.featureText}>{feature}</Text>
               </View>
@@ -129,7 +130,7 @@ export default function PaidPlanTabScreen() {
       {/* Current Plan Info */}
       <View style={styles.currentPlanCard}>
         <View style={styles.currentPlanHeader}>
-          <Ionicons name="information-circle" size={20} color="#2AA8FF" />
+          <Ionicons name="information-circle" size={IconSizes.md} color={Colors.primary} />
           <Text style={styles.currentPlanTitle}>Current Plan</Text>
         </View>
         <Text style={styles.currentPlanText}>
@@ -145,10 +146,10 @@ export default function PaidPlanTabScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: Colors.background,
   },
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: Spacing.screenPadding,
     paddingTop: 20,
   },
 
@@ -156,19 +157,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 24,
+    marginBottom: Spacing.xl,
   },
   backBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
   },
   headerTitle: {
-    color: "#fff",
-    fontSize: 18,
+    color: Colors.text,
+    fontSize: Typography.sizes.xl,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
@@ -178,20 +179,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     paddingVertical: 16,
-    marginBottom: 24,
+    marginBottom: Spacing.xl,
   },
   premiumText: {
-    color: "#BFFF5A",
+    color: Colors.secondary,
     fontSize: 15,
     fontWeight: "700",
     letterSpacing: 0.5,
   },
 
   planCard: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -199,21 +200,21 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   planCardPopular: {
-    borderColor: "#BFFF5A",
-    backgroundColor: "#1E1E1E",
+    borderColor: Colors.secondary,
+    backgroundColor: Colors.surface,
   },
   popularBadge: {
     position: "absolute",
     top: -10,
     left: 20,
-    backgroundColor: "#BFFF5A",
+    backgroundColor: Colors.secondary,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
   popularText: {
-    color: "#0D0F10",
-    fontSize: 10,
+    color: Colors.iconDark,
+    fontSize: Typography.sizes.xs,
     fontWeight: "800",
     letterSpacing: 0.5,
   },
@@ -223,8 +224,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   planName: {
-    color: "#fff",
-    fontSize: 24,
+    color: Colors.text,
+    fontSize: Typography.sizes.xxl,
     fontWeight: "700",
     marginBottom: 8,
   },
@@ -233,13 +234,13 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
   },
   price: {
-    color: "#fff",
-    fontSize: 32,
+    color: Colors.text,
+    fontSize: Typography.sizes.display,
     fontWeight: "700",
   },
   period: {
-    color: "#9B9B9B",
-    fontSize: 14,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.md,
     marginLeft: 4,
   },
 
@@ -253,32 +254,32 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   featureText: {
-    color: "#fff",
-    fontSize: 14,
+    color: Colors.text,
+    fontSize: Typography.sizes.md,
     flex: 1,
   },
 
   subscribeBtn: {
-    backgroundColor: "#2AA8FF",
+    backgroundColor: Colors.primary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   subscribeBtnPopular: {
-    backgroundColor: "#BFFF5A",
+    backgroundColor: Colors.secondary,
   },
   subscribeText: {
-    color: "#fff",
+    color: Colors.text,
     fontSize: 15,
     fontWeight: "700",
   },
   subscribeTextPopular: {
-    color: "#0D0F10",
+    color: Colors.iconDark,
   },
 
   currentPlanCard: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 18,
     marginTop: 8,
@@ -290,13 +291,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   currentPlanTitle: {
-    color: "#fff",
+    color: Colors.text,
     fontSize: 15,
     fontWeight: "700",
   },
   currentPlanText: {
-    color: "#9B9B9B",
-    fontSize: 13,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
     lineHeight: 20,
   },
 });

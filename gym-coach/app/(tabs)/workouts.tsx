@@ -8,6 +8,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { Colors, Spacing, Typography, IconSizes } from "@/constants/design";
 
 const PROFILE_IMAGE = require("@/assets/images/home/featured.jpg");
 // Swap to require("@/assets/images/workout/rowing-form.jpg") when you add that image
@@ -32,23 +34,7 @@ export default function WorkoutsScreen() {
   return (
     <View style={styles.container}>
       {/* Header: menu | mini profile | premium */}
-      <View style={styles.header}>
-        <Pressable style={styles.menuBtn}>
-          <Ionicons name="menu" size={24} color="#fff" />
-        </Pressable>
-
-        <View style={styles.miniProfile}>
-          <Image source={PROFILE_IMAGE} style={styles.miniAvatar} />
-          <View>
-            <Text style={styles.subtitle}>Always good to check your form</Text>
-            <Text style={styles.name}>MORGAN MAXWELL</Text>
-          </View>
-        </View>
-
-        <Pressable style={styles.crownBtn}>
-          <Text style={styles.crownIcon}>👑</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader subtitle="Always good to check your form" title="MORGAN MAXWELL" />
 
       <ScrollView
         style={styles.scroll}
@@ -63,7 +49,7 @@ export default function WorkoutsScreen() {
               <Text style={styles.exerciseName}>{CURRENT_WORKOUT.exercise}</Text>
             </View>
             <View style={styles.timerBadge}>
-              <Ionicons name="time-outline" size={16} color="#BFFF5A" />
+              <Ionicons name="time-outline" size={IconSizes.sm} color={Colors.secondary} />
               <Text style={styles.timerText}>{CURRENT_WORKOUT.duration}</Text>
             </View>
           </View>
@@ -98,7 +84,7 @@ export default function WorkoutsScreen() {
             </View>
             <View style={styles.metricBadge}>
               <Text style={styles.metricLabel}>Posture</Text>
-              <Text style={[styles.metricValue, { color: "#4ADE80" }]}>
+              <Text style={[styles.metricValue, { color: Colors.success }]}>
                 {CURRENT_WORKOUT.posture}
               </Text>
             </View>
@@ -110,17 +96,17 @@ export default function WorkoutsScreen() {
         {/* Quick Stats Cards */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Ionicons name="body-outline" size={24} color="#2AA8FF" />
+            <Ionicons name="body-outline" size={IconSizes.lg} color={Colors.primary} />
             <Text style={styles.statValue}>{CURRENT_WORKOUT.posture}</Text>
             <Text style={styles.statLabel}>Posture</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="hand-left-outline" size={24} color="#FACC15" />
+            <Ionicons name="hand-left-outline" size={IconSizes.lg} color={Colors.warning} />
             <Text style={styles.statValue}>{CURRENT_WORKOUT.control}</Text>
             <Text style={styles.statLabel}>Control</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="expand-outline" size={24} color="#4ADE80" />
+            <Ionicons name="expand-outline" size={IconSizes.lg} color={Colors.success} />
             <Text style={styles.statValue}>{CURRENT_WORKOUT.rangeOfMotion}</Text>
             <Text style={styles.statLabel}>Range</Text>
           </View>
@@ -129,7 +115,7 @@ export default function WorkoutsScreen() {
         {/* Form Tips Card */}
         <View style={styles.tipsCard}>
           <View style={styles.tipsHeader}>
-            <Ionicons name="bulb-outline" size={20} color="#BFFF5A" />
+            <Ionicons name="bulb-outline" size={IconSizes.md} color={Colors.secondary} />
             <Text style={styles.tipsTitle}>Form Tip</Text>
           </View>
           <Text style={styles.tipsText}>
@@ -149,7 +135,7 @@ export default function WorkoutsScreen() {
           <View style={styles.navSide}>
             <Text style={styles.navLabel}>PREVIOUS</Text>
             <Pressable style={styles.navCircleBtn}>
-              <Ionicons name="chevron-back" size={36} color="#0D0F10" />
+              <Ionicons name="chevron-back" size={36} color={Colors.iconDark} />
             </Pressable>
           </View>
 
@@ -157,14 +143,14 @@ export default function WorkoutsScreen() {
             style={styles.pastWorkoutsBtn}
             onPress={() => router.push("/past-workouts")}
           >
-            <Ionicons name="barbell-outline" size={48} color="#0D0F10" />
+            <Ionicons name="barbell-outline" size={48} color={Colors.iconDark} />
             <Text style={styles.pastWorkoutsText}>Past Workouts</Text>
           </Pressable>
 
           <View style={styles.navSide}>
             <Text style={styles.navLabel}>NEXT</Text>
             <Pressable style={styles.navCircleBtn}>
-              <Ionicons name="chevron-forward" size={36} color="#0D0F10" />
+              <Ionicons name="chevron-forward" size={36} color={Colors.iconDark} />
             </Pressable>
           </View>
         </View>
@@ -178,63 +164,15 @@ export default function WorkoutsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: Colors.background,
   },
-
-  header: {
-    marginTop: 12,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  menuBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#1E1E1E",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  miniProfile: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  miniAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  subtitle: {
-    color: "#9B9B9B",
-    fontSize: 11,
-  },
-  name: {
-    color: "#2AA8FF",
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-  },
-
-  crownBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#2AA8FF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  crownIcon: { fontSize: 22 },
 
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  scrollContent: { paddingHorizontal: Spacing.screenPadding, paddingBottom: 24 },
 
   workoutInfoCard: {
     marginTop: 16,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 18,
   },
@@ -245,39 +183,39 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   workoutName: {
-    color: "#fff",
-    fontSize: 18,
+    color: Colors.text,
+    fontSize: Typography.sizes.xl,
     fontWeight: "700",
     marginBottom: 4,
   },
   exerciseName: {
-    color: "#9B9B9B",
-    fontSize: 13,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.md,
   },
   timerBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: Colors.surfaceHighlight,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   timerText: {
-    color: "#BFFF5A",
-    fontSize: 13,
+    color: Colors.secondary,
+    fontSize: Typography.sizes.md,
     fontWeight: "700",
   },
   progressBar: {
     height: 6,
-    backgroundColor: "#2A2A2A",
+    backgroundColor: Colors.surfaceHighlight,
     borderRadius: 3,
     marginBottom: 12,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    backgroundColor: "#BFFF5A",
+    backgroundColor: Colors.secondary,
     borderRadius: 3,
   },
   setInfo: {
@@ -286,20 +224,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   setText: {
-    color: "#fff",
-    fontSize: 14,
+    color: Colors.text,
+    fontSize: Typography.sizes.md,
     fontWeight: "600",
   },
   repsText: {
-    color: "#9B9B9B",
-    fontSize: 13,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.md,
   },
 
   workoutViewWrap: {
     marginTop: 16,
     borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     aspectRatio: 4 / 3,
     position: "relative",
   },
@@ -320,18 +258,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 2,
-    borderColor: "#BFFF5A",
+    borderColor: Colors.secondary,
     alignItems: "center",
   },
   metricLabel: {
-    color: "#9B9B9B",
-    fontSize: 10,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.xs,
     fontWeight: "600",
     marginBottom: 2,
   },
   metricValue: {
-    color: "#BFFF5A",
-    fontSize: 16,
+    color: Colors.secondary,
+    fontSize: Typography.sizes.lg,
     fontWeight: "700",
   },
   formOverlay: {
@@ -346,29 +284,29 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 16,
     alignItems: "center",
     gap: 8,
   },
   statValue: {
-    color: "#fff",
-    fontSize: 20,
+    color: Colors.text,
+    fontSize: Typography.sizes.xl,
     fontWeight: "700",
   },
   statLabel: {
-    color: "#9B9B9B",
-    fontSize: 11,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.xs,
   },
 
   tipsCard: {
     marginTop: 16,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 16,
     borderLeftWidth: 4,
-    borderLeftColor: "#BFFF5A",
+    borderLeftColor: Colors.secondary,
   },
   tipsHeader: {
     flexDirection: "row",
@@ -377,27 +315,27 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tipsTitle: {
-    color: "#BFFF5A",
-    fontSize: 14,
+    color: Colors.secondary,
+    fontSize: Typography.sizes.md,
     fontWeight: "700",
   },
   tipsText: {
-    color: "#fff",
-    fontSize: 13,
+    color: Colors.text,
+    fontSize: Typography.sizes.md,
     lineHeight: 20,
   },
 
   summaryBtn: {
     marginTop: 16,
-    backgroundColor: "#BFFF5A",
+    backgroundColor: Colors.secondary,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   summaryBtnText: {
-    color: "#0D0F10",
-    fontSize: 14,
+    color: Colors.iconDark,
+    fontSize: Typography.sizes.md,
     fontWeight: "800",
   },
 
@@ -412,15 +350,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   navLabel: {
-    color: "#9B9B9B",
-    fontSize: 11,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.xs,
     fontWeight: "700",
   },
   navCircleBtn: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#BFFF5A",
+    backgroundColor: Colors.secondary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -429,14 +367,14 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 12,
     borderRadius: 16,
-    backgroundColor: "#2AA8FF",
+    backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
   pastWorkoutsText: {
-    color: "#0D0F10",
-    fontSize: 12,
+    color: Colors.iconDark,
+    fontSize: Typography.sizes.sm,
     fontWeight: "700",
     textAlign: "center",
   },

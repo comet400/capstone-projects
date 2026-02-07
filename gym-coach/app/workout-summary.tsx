@@ -8,20 +8,21 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { Colors, Spacing, Typography, IconSizes } from "@/constants/design";
 
 // Swap to @/assets/images/workout/rowing-form.jpg when you add the image
 const WORKOUT_IMAGE = require("@/assets/images/home/featured.jpg");
 
 const METRICS = [
-  { label: "Posture", score: 70, color: "#4ADE80" },
-  { label: "Control", score: 62, color: "#FACC15" },
-  { label: "Comfort", score: 20, color: "#F87171" },
-  { label: "Range of Motion", score: 90, color: "#4ADE80" },
-  { label: "Symmetry", score: 67, color: "#FACC15" },
+  { label: "Posture", score: 70, color: Colors.success },
+  { label: "Control", score: 62, color: Colors.warning },
+  { label: "Comfort", score: 20, color: "#F87171" }, // Red isn't in my basic tokens yet, but good to keep
+  { label: "Range of Motion", score: 90, color: Colors.success },
+  { label: "Symmetry", score: 67, color: Colors.warning },
 ] as const;
 
 const OVERALL_SCORE = 62;
-const OVERALL_COLOR = "#FACC15";
+const OVERALL_COLOR = Colors.warning;
 const SUMMARY_DATE = "15 May 2024";
 const AI_FEEDBACK =
   "Careful with your spine! You can do better than that! Focus in your arms, let them do the work!";
@@ -63,7 +64,7 @@ export default function WorkoutSummaryScreen() {
         <View style={styles.cardTitleRow}>
           <Text style={styles.cardTitle}>Workout Summary</Text>
           <Pressable hitSlop={12}>
-            <Ionicons name="ellipsis-horizontal" size={22} color="#9B9B9B" />
+            <Ionicons name="ellipsis-horizontal" size={22} color={Colors.textSecondary} />
           </Pressable>
         </View>
         <View style={styles.detailsRow}>
@@ -113,7 +114,7 @@ export default function WorkoutSummaryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#121212",
+    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: 20,
@@ -121,8 +122,8 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    color: "#fff",
-    fontSize: 18,
+    color: Colors.text,
+    fontSize: Typography.sizes.xl,
     fontWeight: "700",
     textAlign: "center",
     letterSpacing: 0.5,
@@ -135,7 +136,7 @@ const styles = StyleSheet.create({
   visualBorder: {
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#BFFF5A",
+    borderColor: Colors.secondary,
     overflow: "hidden",
     position: "relative",
     aspectRatio: 4 / 3,
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 8,
     height: 8,
-    backgroundColor: "#BFFF5A",
+    backgroundColor: Colors.secondary,
     zIndex: 2,
   },
   cornerTL: { top: 4, left: 4 },
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 18,
     marginBottom: 24,
@@ -177,8 +178,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cardTitle: {
-    color: "#fff",
-    fontSize: 16,
+    color: Colors.text,
+    fontSize: Typography.sizes.lg,
     fontWeight: "700",
   },
   detailsRow: {
@@ -188,12 +189,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   detailsLabel: {
-    color: "#9B9B9B",
-    fontSize: 13,
+    color: Colors.textSecondary,
+    fontSize: Typography.sizes.sm,
   },
   detailsDate: {
-    color: "#fff",
-    fontSize: 13,
+    color: Colors.text,
+    fontSize: Typography.sizes.sm,
   },
   metricRow: {
     flexDirection: "row",
@@ -201,14 +202,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#2A2A2A",
+    borderBottomColor: Colors.surfaceHighlight,
   },
   metricLabel: {
-    color: "#fff",
-    fontSize: 14,
+    color: Colors.text,
+    fontSize: Typography.sizes.md,
   },
   metricScore: {
-    fontSize: 14,
+    fontSize: Typography.sizes.md,
     fontWeight: "600",
   },
   overallRow: {
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   overallLabel: {
-    color: "#fff",
+    color: Colors.text,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -241,7 +242,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#2AA8FF",
+    backgroundColor: Colors.primary,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
@@ -256,30 +257,30 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#4ADE80",
+    backgroundColor: Colors.success,
   },
   speechBubble: {
     flex: 1,
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 14,
     borderTopLeftRadius: 4,
   },
   speechText: {
-    color: "#fff",
-    fontSize: 14,
+    color: Colors.text,
+    fontSize: Typography.sizes.md,
     lineHeight: 20,
   },
 
   goBackBtn: {
-    backgroundColor: "#1E1E1E",
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
     justifyContent: "center",
   },
   goBackText: {
-    color: "#fff",
+    color: Colors.text,
     fontSize: 15,
     fontWeight: "600",
   },
