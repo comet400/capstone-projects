@@ -9,35 +9,72 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Colors, Spacing, Typography } from "@/constants/design";
 
-/* ---------------- Screen ---------------- */
+
+
 
 export default function ActivitiesScreen() {
+  const weeklyGoal = 4;
+  const completedWorkouts = 3;
+
+  const progressPercentage = (completedWorkouts / weeklyGoal) * 100;
+
   return (
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
     >
-      {/* Title */}
+      
       <Text style={styles.title}>Activities</Text>
       <Text style={styles.subtitle}>Choose what to train</Text>
 
-      {/* Muscle Groups */}
+      
       <Text style={styles.sectionTitle}>Muscle Groups</Text>
 
       <View style={styles.grid}>
         <MuscleCard label="Biceps" icon="arm-flex" />
         <MuscleCard label="Chest" icon="dumbbell" />
         <MuscleCard label="Shoulders" icon="weight-lifter" />
+
         <MuscleCard label="Back" icon="rowing" />
         <MuscleCard label="Triceps" icon="arm-flex-outline" />
         <MuscleCard label="Legs" icon="run" />
       </View>
 
-      {/* Recent Activity */}
+      
+
+      <Text style={styles.sectionTitle}>Weekly Goal</Text>
+
+      <View style={styles.goalCard}>
+        <View style={styles.goalHeader}>
+
+          <Text style={styles.goalTitle}>
+            {completedWorkouts} / {weeklyGoal} Workouts Completed
+          </Text>
+
+          <MaterialCommunityIcons
+            name="target"
+            size={22}
+            color={Colors.primary}
+          />
+        </View>
+
+        <View style={styles.progressBarBackground}>
+
+          <View
+            style={[
+              styles.progressBarFill,
+              { width: `${progressPercentage}%` },
+            ]}
+          />
+        </View>
+      </View>
+
+      
       <Text style={styles.sectionTitle}>Recent Activity</Text>
 
       <ActivityCard
         title="Upper Body Strength"
+
         duration="45 min"
         calories="320 kcal"
         day="Today"
@@ -46,10 +83,11 @@ export default function ActivitiesScreen() {
         title="HIIT Cardio"
         duration="30 min"
         calories="280 kcal"
+        
         day="Yesterday"
       />
 
-      {/* Suggested */}
+      
       <Text style={styles.sectionTitle}>Suggested For You</Text>
 
       <Pressable style={styles.suggestionCard}>
@@ -73,7 +111,7 @@ export default function ActivitiesScreen() {
   );
 }
 
-/* ---------------- Components ---------------- */
+
 
 function MuscleCard({
   label,
@@ -98,7 +136,6 @@ function MuscleCard({
     </Pressable>
   );
 }
-
 function ActivityCard({
   title,
   duration,
@@ -118,12 +155,13 @@ function ActivityCard({
           {duration} · {calories}
         </Text>
       </View>
+
       <Text style={styles.activityDay}>{day}</Text>
     </View>
   );
 }
 
-/* ---------------- Styles ---------------- */
+
 
 const styles = StyleSheet.create({
   container: {
@@ -145,14 +183,13 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    marginTop: 5,
+    
     marginBottom: 14,
     fontSize: Typography.sizes.lg,
     fontWeight: "700",
     color: Colors.text,
   },
 
-  /* Muscle Grid */
 
   grid: {
     flexDirection: "row",
@@ -177,14 +214,50 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
 
-  /* Activity */
+  goalCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 6,
+  },
+
+  goalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  goalTitle: {
+    fontSize: Typography.sizes.md,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+
+  progressBarBackground: {
+    marginTop: 14,
+    height: 10,borderRadius: 10, backgroundColor: Colors.background,
+    overflow: "hidden",
+  },
+
+  progressBarFill: {
+    height: "100%",
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+  },
+
+
+
+
+
 
   activityCard: {
     backgroundColor: Colors.surface,
     borderRadius: 18,
+
+
     padding: 16,
-    marginBottom: 12,
-    flexDirection: "row",
+    marginBottom: 12, flexDirection: "row",
+
     justifyContent: "space-between",
     alignItems: "center",
   },
@@ -206,10 +279,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
 
-  /* Suggested */
+
+
 
   suggestionCard: {
     flexDirection: "row",
+
     alignItems: "center",
     backgroundColor: Colors.surface,
     borderRadius: 18,
@@ -219,6 +294,7 @@ const styles = StyleSheet.create({
   suggestionTitle: {
     fontSize: Typography.sizes.md,
     fontWeight: "600",
+
     color: Colors.text,
   },
 
