@@ -1,9 +1,9 @@
 {
   "members": {
     "qm5836": {
-      "hours_balance": 37.54833333333333,
+      "hours_balance": 53.54833333333333,
       "project_start": "2026-01-22T22:22:37.128899",
-      "last_thursday": "2026-02-05",
+      "last_thursday": "2026-02-12",
       "logs": [
         {
           "timestamp": "2026-01-23T20:36:42.916919",
@@ -74,13 +74,21 @@
           "description": "Weekly 16-hour allocation added on 2026-02-05",
           "balance_after": 37.54833333333333,
           "member": "qm5836"
+        },
+        {
+          "timestamp": "2026-02-13T14:35:24.132589",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-12",
+          "balance_after": 53.54833333333333,
+          "member": "qm5836"
         }
       ]
     },
     "lv5441": {
-      "hours_balance": 44.0,
+      "hours_balance": 60.0,
       "project_start": "2026-01-22T22:23:00.479180",
-      "last_thursday": "2026-02-05",
+      "last_thursday": "2026-02-12",
       "logs": [
         {
           "timestamp": "2026-01-22T22:49:23.187678",
@@ -115,13 +123,21 @@
           "description": "Weekly 16-hour allocation added on 2026-02-05",
           "balance_after": 44.0,
           "member": "lv5441"
+        },
+        {
+          "timestamp": "2026-02-13T14:35:24.132623",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-12",
+          "balance_after": 60.0,
+          "member": "lv5441"
         }
       ]
     },
     "vn0335": {
-      "hours_balance": 48,
+      "hours_balance": 64,
       "project_start": "2026-01-22T22:48:03.117865",
-      "last_thursday": "2026-02-05",
+      "last_thursday": "2026-02-12",
       "logs": [
         {
           "timestamp": "2026-01-29T11:21:35.277620",
@@ -138,13 +154,21 @@
           "description": "Weekly 16-hour allocation added on 2026-02-05",
           "balance_after": 48,
           "member": "vn0335"
+        },
+        {
+          "timestamp": "2026-02-13T14:35:24.132646",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-12",
+          "balance_after": 64,
+          "member": "vn0335"
         }
       ]
     },
     "rw3110": {
-      "hours_balance": 33.05583333333333,
+      "hours_balance": 48.408055555555556,
       "project_start": "2026-01-23T00:51:34.183556",
-      "last_thursday": "2026-02-05",
+      "last_thursday": "2026-02-12",
       "logs": [
         {
           "timestamp": "2026-01-29T11:21:35.277622",
@@ -224,9 +248,26 @@
           "project": "",
           "balance_after": 33.05583333333333,
           "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-02-13T14:35:24.132666",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-12",
+          "balance_after": 49.05583333333333,
+          "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-02-13T15:15:16.568353",
+          "type": "timer",
+          "hours": 0.6477777777777778,
+          "description": "Layout for settings, and progress screens and fixed spacing issue on activities screen",
+          "project": "",
+          "balance_after": 48.408055555555556,
+          "member": "rw3110"
         }
       ]
     }
   },
-  "last_saved": "2026-02-11T22:07:04.947553"
+  "last_saved": "2026-02-13T15:15:16.568384"
 }

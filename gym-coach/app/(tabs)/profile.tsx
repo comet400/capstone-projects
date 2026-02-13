@@ -35,11 +35,13 @@ export default function ProfileScreen() {
           <Ionicons name="barbell-outline" size={IconSizes.xl * 2} color={Colors.iconDark} />
           <Text style={styles.gridBtnText}>Past Workouts</Text>
         </Pressable>
-        <Pressable style={[styles.gridBtn, styles.gridBtnBlue]}>
+        <Pressable style={[styles.gridBtn, styles.gridBtnBlue]} 
+          onPress={() => router.push("/settings")}>
           <Ionicons name="settings-outline" size={IconSizes.xl * 2} color={Colors.iconDark} />
           <Text style={styles.gridBtnText}>Settings</Text>
         </Pressable>
-        <Pressable style={[styles.gridBtn, styles.gridBtnLime]}>
+        <Pressable style={[styles.gridBtn, styles.gridBtnLime]} 
+          onPress={() => router.push("/progress")}>
           <Ionicons name="bar-chart-outline" size={IconSizes.xl * 2} color={Colors.iconDark} />
           <Text style={styles.gridBtnText}>Progress</Text>
         </Pressable>

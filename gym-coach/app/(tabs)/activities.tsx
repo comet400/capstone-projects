@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    
+    marginTop: 24,
     marginBottom: 14,
     fontSize: Typography.sizes.lg,
     fontWeight: "700",
@@ -195,6 +195,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+    marginBottom: -118,
   },
 
   muscleCard: {
