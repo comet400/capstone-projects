@@ -256,6 +256,250 @@ PULLUP_GRADING = {
     }
 }
 
+BENCH_PRESS_GRADING = {
+    "range_of_motion": {
+        "weight": 0.35,
+        "type": "range_min",
+        "metric_type": "angles",
+        "metric_key": "avg_elbow",
+        "thresholds": {
+            "excellent": 75,
+            "good": 85,
+            "acceptable": 95,
+            "poor": 110
+        },
+        "invert": True,
+        "severity_curve": "exponential",
+        "description": "Depth of press (elbow angle at bottom)"
+    },
+
+    "lockout_quality": {
+        "weight": 0.20,
+        "type": "range_check",
+        "metric_type": "angles",
+        "metric_key": "top_elbow_angle",
+        "ideal_min": 160,
+        "ideal_max": 180,
+        "thresholds": {
+            "excellent": 5,
+            "good": 10,
+            "acceptable": 15,
+            "poor": 25
+        },
+        "severity_curve": "linear",
+        "description": "Full lockout at top position"
+    },
+
+    "wrist_alignment": {
+        "weight": 0.15,
+        "type": "range_max",
+        "metric_type": "ratios",
+        "metric_key": "wrist_stack",
+        "thresholds": {
+            "excellent": 0.04,
+            "good": 0.06,
+            "acceptable": 0.08,
+            "poor": 0.12
+        },
+        "severity_curve": "quadratic",
+        "description": "Wrist stacked vertically over elbow"
+    },
+
+    "bar_symmetry": {
+        "weight": 0.15,
+        "type": "range_max",
+        "metric_type": "ratios",
+        "metric_key": "bar_symmetry",
+        "thresholds": {
+            "excellent": 0.03,
+            "good": 0.06,
+            "acceptable": 0.10,
+            "poor": 0.18
+        },
+        "severity_curve": "quadratic",
+        "description": "Even bar path left vs right"
+    },
+
+    "tempo_control": {
+        "weight": 0.15,
+        "type": "duration_check",
+        "metric_type": "temporal",
+        "ideal_min": 1.5,
+        "ideal_max": 4.5,
+        "thresholds": {
+            "excellent": 0.5,
+            "good": 1.0,
+            "acceptable": 1.5,
+            "poor": 2.5
+        },
+        "severity_curve": "linear",
+        "description": "Controlled eccentric and concentric tempo"
+    }
+}
+
+BICEP_CURL_GRADING = {
+    "peak_contraction": {
+        "weight": 0.35,
+        "type": "range_min",
+        "metric_type": "angles",
+        "metric_key": "top_elbow_angle",
+        "thresholds": {
+            "excellent": 45,
+            "good": 55,
+            "acceptable": 65,
+            "poor": 80
+        },
+        "invert": True,
+        "severity_curve": "exponential",
+        "description": "Peak bicep contraction"
+    },
+
+    "full_extension": {
+        "weight": 0.20,
+        "type": "range_check",
+        "metric_type": "angles",
+        "metric_key": "bottom_elbow_angle",
+        "ideal_min": 160,
+        "ideal_max": 180,
+        "thresholds": {
+            "excellent": 5,
+            "good": 10,
+            "acceptable": 20,
+            "poor": 40
+        },
+        "severity_curve": "linear",
+        "description": "Full arm extension at bottom"
+    },
+
+    "elbow_stability": {
+        "weight": 0.20,
+        "type": "range_max",
+        "metric_type": "ratios",
+        "metric_key": "elbow_drift",
+        "thresholds": {
+            "excellent": 0.04,
+            "good": 0.07,
+            "acceptable": 0.10,
+            "poor": 0.18
+        },
+        "severity_curve": "quadratic",
+        "description": "Elbows remain pinned"
+    },
+
+    "torso_control": {
+        "weight": 0.15,
+        "type": "range_max",
+        "metric_type": "ratios",
+        "metric_key": "torso_sway",
+        "thresholds": {
+            "excellent": 0.03,
+            "good": 0.07,
+            "acceptable": 0.12,
+            "poor": 0.20
+        },
+        "severity_curve": "quadratic",
+        "description": "Minimal swinging"
+    },
+
+    "tempo_control": {
+        "weight": 0.10,
+        "type": "duration_check",
+        "metric_type": "temporal",
+        "ideal_min": 1.0,
+        "ideal_max": 3.5,
+        "thresholds": {
+            "excellent": 0.3,
+            "good": 0.7,
+            "acceptable": 1.2,
+            "poor": 2.0
+        },
+        "severity_curve": "linear",
+        "description": "Controlled movement tempo"
+    }
+}
+
+DEADLIFT_GRADING = {
+    "spine_neutrality": {
+        "weight": 0.35,
+        "type": "range_max",
+        "metric_type": "angles",
+        "metric_key": "torso_angle",
+        "thresholds": {
+            "excellent": 20,
+            "good": 30,
+            "acceptable": 40,
+            "poor": 55
+        },
+        "severity_curve": "quadratic",
+        "description": "Neutral spine maintenance"
+    },
+
+    "hip_hinge_quality": {
+        "weight": 0.25,
+        "type": "range_check",
+        "metric_type": "angles",
+        "metric_key": "hip_angle",
+        "ideal_min": 60,
+        "ideal_max": 100,
+        "thresholds": {
+            "excellent": 5,
+            "good": 10,
+            "acceptable": 20,
+            "poor": 35
+        },
+        "severity_curve": "linear",
+        "description": "Proper hip hinge mechanics"
+    },
+
+    "lockout_strength": {
+        "weight": 0.15,
+        "type": "range_check",
+        "metric_type": "angles",
+        "metric_key": "top_hip_angle",
+        "ideal_min": 165,
+        "ideal_max": 180,
+        "thresholds": {
+            "excellent": 5,
+            "good": 10,
+            "acceptable": 20,
+            "poor": 40
+        },
+        "severity_curve": "linear",
+        "description": "Full hip extension at top"
+    },
+
+    "bar_path": {
+        "weight": 0.15,
+        "type": "range_max",
+        "metric_type": "ratios",
+        "metric_key": "bar_proximity",
+        "thresholds": {
+            "excellent": 0.05,
+            "good": 0.10,
+            "acceptable": 0.15,
+            "poor": 0.25
+        },
+        "severity_curve": "quadratic",
+        "description": "Bar stays close to body"
+    },
+
+    "symmetry": {
+        "weight": 0.10,
+        "type": "range_max",
+        "metric_type": "ratios",
+        "metric_key": "asymmetry",
+        "thresholds": {
+            "excellent": 0.03,
+            "good": 0.06,
+            "acceptable": 0.10,
+            "poor": 0.20
+        },
+        "severity_curve": "quadratic",
+        "description": "Even left/right pull"
+    }
+}
+
+
 # Grading scale mapping
 GRADE_SCALE = {
     "A+": (97, 100),
@@ -277,6 +521,9 @@ GRADING_CRITERIA = {
     "squat": SQUAT_GRADING,
     "pushup": PUSHUP_GRADING,
     "pullup": PULLUP_GRADING,
+    "bench_press": BENCH_PRESS_GRADING,
+    "bicep_curl": BICEP_CURL_GRADING,
+    "deadlift": DEADLIFT_GRADING
 }
 
 # Legacy support - simplified ISSUE_RULES for backwards compatibility

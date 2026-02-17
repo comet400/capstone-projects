@@ -1,4 +1,7 @@
 import gradio as gr
+from ptt.src.analyzers.bench_press_analyzer import BenchPressAnalyzer
+from ptt.src.analyzers.bicep_curl_analyzer import BicepCurlAnalyzer
+from ptt.src.analyzers.deadlift_analyzer import DeadliftAnalyzer
 from ptt.src.core import VideoProcessor, PoseDetector
 from ptt.src.analyzers import SquatAnalyzer, PushupAnalyzer, PullupAnalyzer
 from ptt.src.counters import RepCounter
@@ -19,6 +22,9 @@ class UCoachUI:
                 "Squat": (ExerciseType.SQUAT, SquatAnalyzer()),
                 "Pushup": (ExerciseType.PUSHUP, PushupAnalyzer()),
                 "Pullup": (ExerciseType.PULLUP, PullupAnalyzer()),
+                "Bench Press": (ExerciseType.BENCH_PRESS, BenchPressAnalyzer()),
+                "Bicep Curl": (ExerciseType.BICEP_CURL, BicepCurlAnalyzer()),
+                "Deadlift": (ExerciseType.DEADLIFT, DeadliftAnalyzer()),
             }
 
             exercise_enum, analyzer = exercise_map[exercise_type]
@@ -48,7 +54,7 @@ Quality Score: {analysis.average_quality:.1f}
                 with gr.Column(scale=1):
                     video_input = gr.Video(label="Upload Video", sources=["upload"])
                     exercise_dropdown = gr.Dropdown(
-                        choices=["Squat", "Pushup", "Pullup"],
+                        choices=["Squat", "Pushup", "Pullup", "Bench Press", "Bicep Curl", "Deadlift"],
                         value="Squat",
                         label="Exercise Type"
                     )

@@ -2,7 +2,7 @@ import math
 from typing import List, Tuple, Dict
 from .base_counter import BaseCounter
 from ..utils.models import RepData, FormMetrics, ExerciseType
-from ...config.exercise_params import SQUAT_PARAMS, PUSHUP_PARAMS, PULLUP_PARAMS
+from ...config.exercise_params import SQUAT_PARAMS, PUSHUP_PARAMS, PULLUP_PARAMS, BENCH_PRESS_PARAMS, BICEP_CURL_PARAMS, DEADLIFT_PARAMS
 from .enhanced_grading_system import RepGrader
 
 
@@ -12,11 +12,23 @@ class RepCounter(BaseCounter):
     """
     
     def __init__(self, exercise_type: ExerciseType, fps: int = 30):
-        super().__init__()
+
+        # Map exercises to proper initial phase
+        initial_state_map = {
+            ExerciseType.SQUAT: "up",
+            ExerciseType.PUSHUP: "up",
+            ExerciseType.PULLUP: "down",
+            ExerciseType.BENCH_PRESS: "up",
+            ExerciseType.BICEP_CURL: "down",
+            ExerciseType.DEADLIFT: "up",
+        }
+
+        super().__init__(initial_state=initial_state_map.get(exercise_type, "up"))
+
         self.exercise_type = exercise_type
         self.fps = fps
-        
-        # Initialize the new grading system
+
+        # Initialize grading system
         self.grader = RepGrader(exercise_type, fps)
 
         # Rep timing parameters
@@ -33,6 +45,7 @@ class RepCounter(BaseCounter):
         self._depth_buffer = []
         self._smooth_window = 3
 
+
     def process_frame(self, frame_num: int, metrics: FormMetrics) -> bool:
         """Process a single frame and detect rep completion"""
         self.frame_metrics.append((frame_num, metrics))
@@ -46,6 +59,13 @@ class RepCounter(BaseCounter):
             return self._process_pushup(frame_num, metrics)
         elif self.exercise_type == ExerciseType.PULLUP:
             return self._process_pullup(frame_num, metrics)
+        elif self.exercise_type == ExerciseType.BENCH_PRESS:
+            return self._process_bench_press(frame_num, metrics)
+        elif self.exercise_type == ExerciseType.BICEP_CURL:
+            return self._process_bicep_curl(frame_num, metrics)
+        elif self.exercise_type == ExerciseType.DEADLIFT:
+            return self._process_deadlift(frame_num, metrics)
+
 
         return False
 
@@ -180,6 +200,129 @@ class RepCounter(BaseCounter):
                 self._up_counter = 0
 
         return False
+    
+    def _process_bench_press(self, frame_num: int, metrics: FormMetrics) -> bool:
+        if "avg_elbow" not in metrics.angles:
+            return False
+
+        elbow = self._smooth(self._angle_buffer, metrics.angles["avg_elbow"])
+        if math.isnan(elbow):
+            return False
+
+        down_th = BENCH_PRESS_PARAMS["elbow_angle_down"]
+        up_th = BENCH_PRESS_PARAMS["elbow_angle_up"]
+
+        if self.state == "up":
+            if elbow < down_th:
+                self._down_counter += 1
+            else:
+                self._down_counter = 0
+
+            if self._down_counter >= self.min_phase_frames:
+                self.state = "down"
+                self.current_rep_start = frame_num
+                self._down_counter = 0
+
+        elif self.state == "down":
+            if elbow > up_th:
+                self._up_counter += 1
+            else:
+                self._up_counter = 0
+
+            if self._up_counter >= self.min_phase_frames:
+                duration = frame_num - (self.current_rep_start or frame_num)
+                if self.current_rep_start is not None and self.min_rep_frames <= duration <= self.max_rep_frames:
+                    self._finalize_rep(frame_num)
+                    self.state = "up"
+                    self._up_counter = 0
+                    return True
+                self.state = "up"
+                self._up_counter = 0
+
+        return False
+    
+    def _process_bicep_curl(self, frame_num: int, metrics: FormMetrics) -> bool:
+        if "avg_elbow" not in metrics.angles:
+            return False
+
+        elbow = self._smooth(self._angle_buffer, metrics.angles["avg_elbow"])
+        if math.isnan(elbow):
+            return False
+
+        down_th = BICEP_CURL_PARAMS["elbow_angle_down"]
+        up_th = BICEP_CURL_PARAMS["elbow_angle_up"]
+
+        if self.state == "down":
+            if elbow < up_th:
+                self._down_counter += 1
+            else:
+                self._down_counter = 0
+
+            if self._down_counter >= self.min_phase_frames:
+                self.state = "up"
+                self.current_rep_start = frame_num
+                self._down_counter = 0
+
+        elif self.state == "up":
+            if elbow > down_th:
+                self._up_counter += 1
+            else:
+                self._up_counter = 0
+
+            if self._up_counter >= self.min_phase_frames:
+                duration = frame_num - (self.current_rep_start or frame_num)
+                if self.current_rep_start is not None and self.min_rep_frames <= duration <= self.max_rep_frames:
+                    self._finalize_rep(frame_num)
+                    self.state = "down"
+                    self._up_counter = 0
+                    return True
+                self.state = "down"
+                self._up_counter = 0
+
+        return False
+    
+    def _process_deadlift(self, frame_num: int, metrics: FormMetrics) -> bool:
+        if "hip_angle" not in metrics.angles:
+            return False
+
+        hip = self._smooth(self._angle_buffer, metrics.angles["hip_angle"])
+        if math.isnan(hip):
+            return False
+
+        down_th = DEADLIFT_PARAMS["hip_angle_down"]
+        up_th = DEADLIFT_PARAMS["hip_angle_up"]
+
+        if self.state == "up":
+            if hip < down_th:
+                self._down_counter += 1
+            else:
+                self._down_counter = 0
+
+            if self._down_counter >= self.min_phase_frames:
+                self.state = "down"
+                self.current_rep_start = frame_num
+                self._down_counter = 0
+
+        elif self.state == "down":
+            if hip > up_th:
+                self._up_counter += 1
+            else:
+                self._up_counter = 0
+
+            if self._up_counter >= self.min_phase_frames:
+                duration = frame_num - (self.current_rep_start or frame_num)
+                if self.current_rep_start is not None and self.min_rep_frames <= duration <= self.max_rep_frames:
+                    self._finalize_rep(frame_num)
+                    self.state = "up"
+                    self._up_counter = 0
+                    return True
+                self.state = "up"
+                self._up_counter = 0
+
+        return False
+
+
+
 
     def _finalize_rep(self, end_frame: int):
         """

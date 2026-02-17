@@ -24,67 +24,72 @@ PULLUP_PARAMS = {
     "body_swing_max": 0.4,   # slightly more tolerant
 }
 
+BENCH_PRESS_PARAMS = {
+    # Rep detection
+    "elbow_angle_down": 90,
+    "elbow_angle_up": 150,
 
-# -----------------------------
-# UPPER BODY - ISOLATION
-# -----------------------------
+    # Bar mechanics
+    "bar_path_verticality_min": 0.5,
+    "bar_symmetry_max": 0.1,        # left/right wrist height diff
+
+    # Joint stacking
+    "wrist_stack_max": 0.08,        # wrist over elbow tolerance
+
+    # Stability
+    "shoulder_stability_max": 0.2,
+    "scapular_retraction_min": 0.2, # optional expansion
+
+    # Quality
+    "lockout_angle_min": 160,
+    "rom_min": 70,                  # minimum elbow ROM delta
+    "eccentric_control_min": 0.2,   # tempo ratio placeholder
+}
 
 BICEP_CURL_PARAMS = {
-    "elbow_angle_up": 60,      # peak contraction
-    "elbow_angle_down": 160,   # full extension
-    "shoulder_movement_max": 0.15,  # prevent swinging
+    # Rep detection
+    "elbow_angle_up": 60,
+    "elbow_angle_down": 160,
+
+    # Anti-cheating
+    "elbow_drift_max": 0.10,
+    "shoulder_movement_max": 0.15,
+    "torso_sway_max": 0.15,
+
+    # Quality control
+    "rep_min_rom": 80,               # angle delta requirement
+    "contraction_hold_min": 0.1,     # seconds (future timing support)
 }
-
-LATERAL_RAISE_PARAMS = {
-    "shoulder_angle_up": 85,   # near parallel
-    "shoulder_angle_down": 20, # resting position
-    "torso_sway_max": 0.2,
-}
-
-SHOULDER_PRESS_PARAMS = {
-    "elbow_angle_down": 90,
-    "elbow_angle_up": 170,
-    "wrist_over_shoulder_min": 0.4,
-    "back_arch_max": 45,
-}
-
-# -----------------------------
-# COMPOUND UPPER
-# -----------------------------
-
-DIP_PARAMS = {
-    "elbow_angle_down": 85,
-    "elbow_angle_up": 160,
-    "shoulder_depth_min": 0.25,
-    "body_swing_max": 0.25,
-}
-
-BENCH_PRESS_PARAMS = {
-    "elbow_angle_down": 85,
-    "elbow_angle_up": 165,
-    "bar_path_verticality_min": 0.5,
-    "shoulder_stability_max": 0.2,
-}
-
-# -----------------------------
-# LOWER BODY
-# -----------------------------
 
 DEADLIFT_PARAMS = {
-    "hip_angle_down": 65,       # hinge depth
+    # Phase detection
+    "hip_angle_down": 65,
     "hip_angle_up": 170,
-    "knee_bend_max": 110,       # prevent squat-style DL
+
+    # Movement type validation
+    "knee_bend_max": 110,       # avoid squat-style DL
+    "shin_verticality_max": 0.25,
+
+    # Spine safety
     "back_round_max": 40,
+    "asymmetry_max": 0.15,
+
+    # Bar mechanics
+    "bar_proximity_max": 0.15,  # wrist to ankle horizontal dist
+
+    # Lockout quality
+    "hip_drive_min": 150,
+    "lockout_min": 165,
+
+    # Rep quality
+    "rep_min_rom": 80,
 }
 
-# -----------------------------
-# CORE
-# -----------------------------
-
-SITUP_PARAMS = {
-    "torso_angle_up": 40,      # upright position
-    "torso_angle_down": 150,   # lying flat
-    "hip_stability_max": 0.2,
+GLOBAL_FORM_PARAMS = {
+    "symmetry_max": 0.15,
+    "min_visibility_score": 0.6,
+    "min_rep_duration": 0.4,
+    "max_rep_duration": 5.0,
 }
 
 
@@ -92,13 +97,9 @@ EXERCISE_PARAMS = {
     "squat": SQUAT_PARAMS,
     "pushup": PUSHUP_PARAMS,
     "pullup": PULLUP_PARAMS,
-    "bicep_curl": BICEP_CURL_PARAMS,
-    "lateral_raise": LATERAL_RAISE_PARAMS,
-    "shoulder_press": SHOULDER_PRESS_PARAMS,
-    "dip": DIP_PARAMS,
-    "deadlift": DEADLIFT_PARAMS,
-    "situp": SITUP_PARAMS,
     "bench_press": BENCH_PRESS_PARAMS,
+    "bicep_curl": BICEP_CURL_PARAMS,
+    "deadlift": DEADLIFT_PARAMS
 }
 
 def get_exercise_params(exercise_type: str) -> dict:

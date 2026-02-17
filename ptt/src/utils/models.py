@@ -11,6 +11,9 @@ class ExerciseType(Enum):
     SQUAT = "squat"
     PUSHUP = "pushup"
     PULLUP = "pullup"
+    BENCH_PRESS = "bench_press"
+    BICEP_CURL = "bicep_curl"
+    DEADLIFT = "deadlift"
 
 
 @dataclass
