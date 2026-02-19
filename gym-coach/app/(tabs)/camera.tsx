@@ -35,7 +35,7 @@ export default function CameraScreen() {
     }
   }, [permission]);
 
-  // 🎥 Handle recording
+  //  recording
   const handleRecordPress = async () => {
     if (!cameraRef.current) return;
 
@@ -65,10 +65,13 @@ export default function CameraScreen() {
     }
   };
 
-  // ☁️ Upload + process
+
+
   const uploadVideo = async (uri: string) => {
     setIsProcessing(true);
+
     setProcessingStep(0);
+
 
     const stepInterval = setInterval(() => {
       setProcessingStep((prev) => {
@@ -76,6 +79,7 @@ export default function CameraScreen() {
           return prev + 1;
         }
         return prev;
+        
       });
     }, 1200);
 
@@ -120,7 +124,7 @@ export default function CameraScreen() {
     }
   };
 
-  // 📊 Processing Screen
+  // Proces Screen
   if (isProcessing) {
     return (
       <View style={styles.processingContainer}>
@@ -172,7 +176,7 @@ export default function CameraScreen() {
     );
   }
 
-  // 🔒 Permission Screen
+  // Permission Screen
   if (!permission?.granted) {
     return (
       <View style={styles.permissionContainer}>
@@ -193,7 +197,7 @@ export default function CameraScreen() {
     );
   }
 
-  // 📷 Main Camera UI
+  // Camera UI
   return (
     <View style={styles.container}>
       {/* Top Bar */}
