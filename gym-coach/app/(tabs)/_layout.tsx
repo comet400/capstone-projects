@@ -1,5 +1,5 @@
 import React from "react";
-import { Tabs } from "expo-router";
+import { Tabs, usePathname } from "expo-router";
 import { View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,12 +8,13 @@ import { Colors, Typography, IconSizes } from "@/constants/design";
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const isCamera = pathname === "/camera";
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarButton: HapticTab,
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textSecondary,
         tabBarLabelStyle: {
@@ -32,19 +33,14 @@ export default function TabsLayout() {
         ],
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{ href: null }}
-      />
+      <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen name="explore" options={{ href: null }} />
+
       <Tabs.Screen
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ focused, color }) => (
+          tabBarIcon: ({ focused }) => (
             <TabIcon
               name={focused ? "home" : "home-outline"}
               focused={focused}
@@ -71,7 +67,10 @@ export default function TabsLayout() {
         options={{
           title: "",
           tabBarLabel: () => null,
-          tabBarIcon: ({ focused }) => <CameraTabIcon focused={focused} />,
+          // Collapse the tab item entirely when on the camera screen
+          tabBarItemStyle: isCamera ? styles.cameraItemHidden : styles.cameraItem,
+          tabBarIcon: ({ focused }) =>
+            isCamera ? null : <CameraTabIcon focused={focused} />,
         }}
       />
 
@@ -104,13 +103,7 @@ export default function TabsLayout() {
   );
 }
 
-function TabIcon({
-  name,
-  focused,
-}: {
-  name: string;
-  focused: boolean;
-}) {
+function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   return (
     <View style={styles.iconContainer}>
       <Ionicons
@@ -161,23 +154,23 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 10,
   },
-
   iconContainer: {
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
     width: 32,
     height: 32,
   },
-  activeIndicator: {
-    position: "absolute",
-    bottom: -8,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#2AA8FF",
+  // Normal camera tab item — wide enough for the floating button
+  cameraItem: {
+    width: 78,
+    overflow: "visible",
   },
-
+  // Collapsed when on camera screen — zero width, no interaction
+  cameraItemHidden: {
+    width: 0,
+    overflow: "hidden",
+    opacity: 0,
+  },
   cameraWrap: {
     width: 78,
     height: 78,
@@ -210,15 +203,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#151515",
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  badgeDot: {
-    position: "absolute",
-    right: 10,
-    top: 10,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#FF3B30",
   },
 });

@@ -25,77 +25,92 @@ MIN_REP_FRAMES = 10
 
 SQUAT_GRADING = {
     "depth": {
-        "weight": 0.35,  # Most important for squats (35%)
+        "weight": 0.35,
         "type": "range_min",
         "metric_type": "ratios",
-        "metric_key": "depth",
+        "metric_key": "depth",           # ✅ matches metrics.ratios["depth"] in analyzer
         "thresholds": {
-            "excellent": 0.75,   # Below parallel (hips below knees)
-            "good": 0.65,        # Parallel
-            "acceptable": 0.55,  # Slightly above parallel
-            "poor": 0.45         # Quarter squat
+            # ROM-based depth score (0.0–1.0):
+            #   1.0 = 85°+ ROM (deep, below parallel)
+            #   0.5 = 65°  ROM (just at parallel)
+            #   0.0 = 45°  ROM (very shallow)
+            # Loosened so parallel squats land in "good" not "poor"
+            "excellent":  0.70,   # ~80° ROM — deep squat
+            "good":       0.50,   # ~65° ROM — parallel
+            "acceptable": 0.30,   # ~55° ROM — slightly above parallel
+            "poor":       0.10    # ~50° ROM — quarter squat (still gets some credit)
         },
-        "severity_curve": "exponential",
-        "description": "Hip depth relative to knee height"
+        "severity_curve": "linear",      # exponential was too punishing for shallow-but-ok depth
+        "description": "Depth achieved relative to full ROM (standing → bottom)"
     },
+
     "knee_alignment": {
-        "weight": 0.25,  # 25% of total score
-        "type": "angle_deviation",
-        "metric_type": "angles",
-        "metric_key": "knee_valgus",
+        "weight": 0.25,
+        "type": "range_min",
+        "metric_type": "ratios",
+        "metric_key": "knee_alignment_score",  # ✅ fixed: was "knee_valgus" (didn't exist)
+        #                                         matches metrics.ratios["knee_alignment_score"]
         "thresholds": {
-            "excellent": 5,      # Degrees of knee cave (valgus collapse)
-            "good": 10,
-            "acceptable": 15,
-            "poor": 25
+            # knee_alignment_score is 0.0–1.0 (1.0 = knees perfectly tracking)
+            "excellent":  0.90,
+            "good":       0.70,
+            "acceptable": 0.50,
+            "poor":       0.25
         },
         "severity_curve": "quadratic",
-        "description": "Knees tracking over toes (no caving)"
+        "description": "Knees tracking over toes (no valgus collapse)"
     },
+
     "torso_angle": {
-        "weight": 0.20,  # 20% of total score
-        "type": "range_check",
+        "weight": 0.20,
+        "type": "range_max",             # lower lean = better, so penalise above threshold
         "metric_type": "angles",
-        "metric_key": "torso_angle",
-        "ideal_min": 30,    # Degrees from vertical
-        "ideal_max": 60,
+        "metric_key": "torso_lean",      # ✅ fixed: was "torso_angle" — analyzer now outputs
+        #                                   "torso_lean" (degrees of forward lean from vertical)
         "thresholds": {
-            "excellent": 5,      # Degrees outside ideal range
-            "good": 10,
-            "acceptable": 15,
-            "poor": 25
+            # torso_lean is degrees from vertical (0° = perfectly upright)
+            # More lenient — some forward lean is normal, especially at depth
+            "excellent":  20,    # ≤20° lean → full marks
+            "good":       30,    # ≤30°
+            "acceptable": 40,    # ≤40°
+            "poor":       55     # >55° → poor (was 25° — far too strict)
         },
         "severity_curve": "linear",
-        "description": "Torso angle during descent"
+        "description": "Forward lean from vertical during descent"
     },
+
     "tempo_control": {
-        "weight": 0.15,  # 15% of total score
+        "weight": 0.15,
         "type": "duration_check",
         "metric_type": "temporal",
-        "ideal_min": 1.5,        # Seconds for complete rep
-        "ideal_max": 5.0,
+        "metric_key": "rep_duration",
+        "ideal_min": 1.2,        # lowered: 1.5s was penalising fast-but-controlled reps
+        "ideal_max": 6.0,        # raised: slow deliberate reps shouldn't be penalised
         "thresholds": {
-            "excellent": 0.5,    # Seconds outside ideal range
-            "good": 1.0,
-            "acceptable": 1.5,
-            "poor": 2.5
+            "excellent":  0.5,   # seconds outside ideal band
+            "good":       1.2,
+            "acceptable": 2.0,
+            "poor":       3.5    # was 2.5 — a bit more forgiveness for beginners
         },
         "severity_curve": "linear",
-        "description": "Controlled movement speed"
+        "description": "Controlled movement speed (seconds per rep)"
     },
+
     "stability": {
-        "weight": 0.05,  # 5% of total score
-        "type": "variance_check",
+        "weight": 0.05,
+        "type": "range_min",
         "metric_type": "ratios",
-        "metric_key": "balance_variance",
+        "metric_key": "stability",       
+        #                                   
         "thresholds": {
-            "excellent": 0.05,   # Variance in side-to-side balance
-            "good": 0.10,
-            "acceptable": 0.15,
-            "poor": 0.25
+            # stability is 0.0–1.0 (1.0 = perfectly symmetric left/right)
+            "excellent":  0.85,
+            "good":       0.65,
+            "acceptable": 0.45,
+            "poor":       0.25
         },
         "severity_curve": "linear",
-        "description": "Balance and stability throughout movement"
+        "description": "Left/right symmetry throughout movement"
     }
 }
 

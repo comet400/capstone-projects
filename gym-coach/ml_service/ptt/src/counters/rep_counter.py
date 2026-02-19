@@ -87,11 +87,15 @@ class RepCounter(BaseCounter):
         if math.isnan(depth):
             return False
 
-        down_th = SQUAT_PARAMS["depth_threshold_parallel"]
-        up_th = SQUAT_PARAMS["rep_up_threshold"]
+        down_th = SQUAT_PARAMS["depth_rom_parallel"]    # renamed from depth_threshold_parallel
+        up_th   = SQUAT_PARAMS["rep_up_threshold"]      # 0.55 — now correctly a LOW score (standing)
+
+        rom_min = SQUAT_PARAMS["depth_score_rom_min"]   # 45
+        rom_max = SQUAT_PARAMS["depth_score_rom_max"]   # 85
+        down_th_ratio = max(0.0, min(1.0, (down_th - rom_min) / (rom_max - rom_min)))
 
         if self.state == "up":
-            if depth < down_th:
+            if depth > down_th_ratio:
                 self._down_counter += 1
             else:
                 self._down_counter = 0
@@ -102,7 +106,7 @@ class RepCounter(BaseCounter):
                 self._down_counter = 0
 
         elif self.state == "down":
-            if depth > up_th:
+            if depth < up_th:
                 self._up_counter += 1
             else:
                 self._up_counter = 0

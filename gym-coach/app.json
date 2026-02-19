@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "gym-coach",
-    "slug": "gym-coach",
+    "name": "Ucoach",
+    "slug": "ucoach",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "gymcoach",
+    "scheme": "ucoach",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },

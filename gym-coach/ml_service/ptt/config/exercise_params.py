@@ -3,13 +3,26 @@ Exercise-specific parameters and configurations
 """
 
 SQUAT_PARAMS = {
-    "depth_threshold_parallel": 0.60,
-    "depth_threshold_deep": 0.45,
-    "knee_alignment_min": 0.3,
-    "torso_angle_max": 50,
-    "rep_up_threshold": 0.70
-}
 
+    "depth_rom_deep":           80,   # degrees of bend for a "deep" squat
+    "depth_rom_parallel":       60,   # degrees of bend for "parallel"
+    "depth_rom_shallow_cutoff": 45,   # below this → issue flagged
+
+    "depth_score_rom_min":      45,   # (was effectively ~80° from the old formula)
+    "depth_score_rom_max":      85,   # full marks — reachable for most people
+
+    "knee_alignment_severe":    0.65,  # was 0.3 (too lenient to ever catch issues)
+    "knee_alignment_minor":     0.80,  # new mild-warning band
+    "knee_alignment_min":       0.55,  # absolute floor before score → 0
+
+    "torso_angle_max":          45,   # flag threshold (matches the scorer)
+    "torso_angle_ideal":        30,   # below this → full marks
+    "torso_angle_moderate":     45,   # mild warning band upper bound
+
+    "rep_up_threshold":         0.55, 
+    "stability_asymmetry_flag": 20,   
+    "stability_score_max_diff": 30,   
+}
 
 PUSHUP_PARAMS = {
     "elbow_angle_down": 120,  
@@ -19,9 +32,9 @@ PUSHUP_PARAMS = {
 }
 
 PULLUP_PARAMS = {
-    "elbow_angle_up": 105,   # was 90
-    "elbow_angle_down": 155, # slightly relaxed
-    "body_swing_max": 0.4,   # slightly more tolerant
+    "elbow_angle_up": 105,   
+    "elbow_angle_down": 155, 
+    "body_swing_max": 0.4,   
 }
 
 BENCH_PRESS_PARAMS = {

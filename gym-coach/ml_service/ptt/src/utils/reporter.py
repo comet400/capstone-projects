@@ -3,7 +3,7 @@ Report generation for exercise analysis
 """
 from typing import List
 from ..utils.models import ExerciseAnalysis, RepData
-
+import numpy as np
 
 class ReportFormatter:
     """Format analysis results into readable reports"""
@@ -43,6 +43,7 @@ class ReportFormatter:
             lines.extend(ReportFormatter._format_rep_section(rep, analysis.video_fps))
         
         lines.append("=" * 60)
+        print("\n".join(lines))
         return "\n".join(lines)
     
     @staticmethod
@@ -82,23 +83,99 @@ class ReportFormatter:
     
     @staticmethod
     def format_json_report(analysis: ExerciseAnalysis) -> dict:
-        """Generate a JSON-serializable report"""
-        return {
-            "exercise_type": analysis.exercise_type.value,
-            "total_reps": analysis.total_reps,
-            "average_quality": round(analysis.average_quality, 2),
-            "grade": analysis.get_quality_grade(),
-            "duration_seconds": round(analysis.duration_seconds, 2),
-            "overall_issues": analysis.overall_issues,
-            "reps": [
-                {
-                    "rep_number": rep.rep_number,
-                    "quality_score": round(rep.quality_score, 2),
-                    "duration_seconds": round(rep.get_duration_seconds(analysis.video_fps), 2),
-                    "issues": rep.issues,
-                    "metrics": {k: round(v, 2) if isinstance(v, float) else v 
-                               for k, v in rep.metrics.items()}
+        """Generate a UI-optimized structured JSON report"""
+
+        def to_native(value):
+            if isinstance(value, (np.floating,)):
+                return float(value)
+            if isinstance(value, (np.integer,)):
+                return int(value)
+            return value
+
+        rep_summaries = []
+        issue_frequency = {}
+
+        for rep in analysis.rep_data:
+            duration = rep.get_duration_seconds(analysis.video_fps)
+
+            # Track issue frequency
+            for issue in rep.issues:
+                issue_frequency[issue] = issue_frequency.get(issue, 0) + 1
+
+            rep_summaries.append({
+                "id": int(rep.rep_number),
+
+                "quality": {
+                    "score": float(round(to_native(rep.quality_score), 2)),
+                    "grade": _grade_from_score(float(rep.quality_score))
+                },
+
+                "timing": {
+                    "duration_seconds": float(round(to_native(duration), 2)),
+                },
+
+                "form": {
+                    "issues": list(rep.issues),
+                    "is_perfect": len(rep.issues) == 0
+                },
+
+                "metrics": {
+                    k: float(round(to_native(v), 2))
+                    if isinstance(v, (float, np.floating))
+                    else int(to_native(v)) if isinstance(v, (int, np.integer))
+                    else v
+                    for k, v in rep.metrics.items()
                 }
-                for rep in analysis.rep_data
-            ]
+            })
+
+        return {
+            "metadata": {
+                "exercise_type": str(analysis.exercise_type.value),
+                "duration_seconds": float(round(to_native(analysis.duration_seconds), 2)),
+                "video_fps": float(to_native(analysis.video_fps)),
+            },
+
+            "summary": {
+                "total_reps": int(to_native(analysis.total_reps)),
+                "average_quality": {
+                    "score": float(round(to_native(analysis.average_quality), 2)),
+                    "grade": analysis.get_quality_grade()
+                },
+                "performance_tier": _performance_tier(float(analysis.average_quality)),
+                "has_issues": bool(len(analysis.overall_issues) > 0)
+            },
+
+            "issues": {
+                "overall": list(analysis.overall_issues),
+                "frequency": {k: int(v) for k, v in issue_frequency.items()}
+            },
+
+            "analytics": {
+                "quality_trend": [
+                    float(round(to_native(rep.quality_score), 2))
+                    for rep in analysis.rep_data
+                ],
+                "rep_durations": [
+                    float(round(to_native(rep.get_duration_seconds(analysis.video_fps)), 2))
+                    for rep in analysis.rep_data
+                ]
+            },
+
+            "reps": rep_summaries
         }
+
+
+def _performance_tier(quality: float) -> str:
+    if quality >= 80:
+        return "excellent"
+    elif quality >= 60:
+        return "good"
+    return "needs_improvement"
+
+
+def _grade_from_score(score: float) -> str:
+    if score >= 90: return "A"
+    if score >= 80: return "B"
+    if score >= 70: return "C"
+    if score >= 60: return "D"
+    return "F"

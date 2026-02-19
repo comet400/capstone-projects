@@ -1,17 +1,13 @@
-// routes/analyze.route.js
-// Proxies multipart video upload from the mobile app → FastAPI
-
 const express = require("express");
 const multer = require("multer");
 const FormData = require("form-data");
-const fetch = require("node-fetch");
 const fs = require("fs");
+const axios = require("axios");
 
 const router = express.Router();
 const upload = multer({ dest: "tmp/" });
 
-// Update if FastAPI runs on a different host/port
-const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8000/analyze";
+const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8010/analyze";
 
 router.post("/", upload.single("video"), async (req, res) => {
     try {
@@ -24,35 +20,29 @@ router.post("/", upload.single("video"), async (req, res) => {
             return res.status(400).json({ error: "Missing 'video' file" });
         }
 
-        // Forward to FastAPI as multipart/form-data
         const form = new FormData();
         form.append("exercise", exercise);
         form.append("video", fs.createReadStream(req.file.path), {
-            filename: req.file.originalname || "workout.mp4",
-            contentType: req.file.mimetype || "video/mp4",
+            filename: "workout.mp4",
+            contentType: "video/mp4",
+            knownLength: req.file.size,
         });
 
-        const fastapiRes = await fetch(FASTAPI_URL, {
-            method: "POST",
-            body: form,
+        const fastapiRes = await axios.post(FASTAPI_URL, form, {
             headers: form.getHeaders(),
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
         });
 
-        // Clean up the temp file regardless of outcome
         fs.unlink(req.file.path, () => {});
 
-        if (!fastapiRes.ok) {
-            const text = await fastapiRes.text();
-            return res.status(fastapiRes.status).json({ error: text });
-        }
-
-        const data = await fastapiRes.json();
-        return res.json(data);
+        return res.json(fastapiRes.data);
     } catch (err) {
-        // Clean up temp file on error too
         if (req.file?.path) fs.unlink(req.file.path, () => {});
-        console.error("Analyze proxy error:", err);
-        return res.status(500).json({ error: err.message });
+        console.error("Analyze proxy error:", err?.response?.data ?? err.message);
+        return res.status(err?.response?.status ?? 500).json({
+            error: err?.response?.data ?? err.message,
+        });
     }
 });
 

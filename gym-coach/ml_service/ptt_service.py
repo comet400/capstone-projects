@@ -36,10 +36,14 @@ async def analyze(exercise: str = Form(...), video: UploadFile = File(...)):
         path = tmp.name
 
     analysis = processor.process_video(path, ex_enum)
+    print(f"Generated report for {exercise}:")
+    print(f"Total Reps: {analysis.total_reps}")
+    print(f"Average Quality: {analysis.average_quality:.1f}/100 (Grade: {analysis.get_quality_grade()})")
+    print(ReportFormatter.format_json_report(analysis))
 
     return {
         "exercise": exercise,
         "total_reps": analysis.total_reps,
         "average_quality": float(analysis.average_quality),
-        "report": ReportFormatter.format_text_report(analysis),
+        "report": ReportFormatter.format_json_report(analysis),
     }
