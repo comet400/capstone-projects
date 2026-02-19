@@ -14,7 +14,7 @@ QUALITY_SCORE_MIN = 0.0
 COMMON_ISSUE_THRESHOLD = 0.3
 
 # Minimum frames for a valid rep
-MIN_REP_FRAMES = 10
+MIN_REP_FRAMES = 3
 
 
 # ============================================================================

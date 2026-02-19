@@ -8,13 +8,14 @@ import {
   Dimensions,
   Animated,
 } from "react-native";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Colors, Typography } from "@/constants/design";
 import { LinearGradient } from "expo-linear-gradient";
+import * as VideoThumbnails from "expo-video-thumbnails";
 
-// Swap to your workout image
+// Fallback image
 const WORKOUT_IMAGE = require("@/assets/images/home/featured.jpg");
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -43,9 +44,9 @@ interface AnalysisReport {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function scoreColor(score: number): string {
-  if (score >= 80) return "#4ADE80"; // green
-  if (score >= 60) return "#FACC15"; // yellow
-  return "#F87171"; // red
+  if (score >= 80) return "#4ADE80";
+  if (score >= 60) return "#FACC15";
+  return "#F87171";
 }
 
 function tierLabel(tier: AnalysisReport["summary"]["performance_tier"]): string {
@@ -74,16 +75,10 @@ function ScoreRing({ score, size = 120 }: { score: number; size?: number }) {
     }).start();
   }, [score]);
 
-  const strokeDashoffset = animValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [circumference, 0],
-  });
-
   const color = scoreColor(score);
 
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
-      {/* Background track */}
       <View
         style={{
           position: "absolute",
@@ -94,7 +89,6 @@ function ScoreRing({ score, size = 120 }: { score: number; size?: number }) {
           borderColor: "rgba(255,255,255,0.07)",
         }}
       />
-      {/* Glow layer */}
       <View
         style={{
           position: "absolute",
@@ -133,16 +127,8 @@ function QualitySparkline({ data }: { data: number[] }) {
 
   return (
     <View style={{ height: H + 24, marginTop: 8 }}>
-      {/* Y dots + labels */}
       {pts.map((pt, i) => (
-        <View
-          key={i}
-          style={{
-            position: "absolute",
-            left: pt.x - 4,
-            top: pt.y - 4,
-          }}
-        >
+        <View key={i} style={{ position: "absolute", left: pt.x - 4, top: pt.y - 4 }}>
           <View
             style={{
               width: 8,
@@ -156,7 +142,6 @@ function QualitySparkline({ data }: { data: number[] }) {
           />
         </View>
       ))}
-      {/* Connecting lines via absolute positioned thin views — simple approach */}
       {pts.slice(0, -1).map((pt, i) => {
         const next = pts[i + 1];
         const dx = next.x - pt.x;
@@ -179,7 +164,6 @@ function QualitySparkline({ data }: { data: number[] }) {
           />
         );
       })}
-      {/* Rep labels */}
       {pts.map((pt, i) => (
         <Text
           key={`lbl-${i}`}
@@ -209,9 +193,7 @@ function RepCard({ rep }: { rep: RepSummary }) {
           <Text style={repStyles.repNum}>Rep {rep.id}</Text>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Text style={[repStyles.score, { color }]}>
-            {rep.quality.score.toFixed(0)}
-          </Text>
+          <Text style={[repStyles.score, { color }]}>{rep.quality.score.toFixed(0)}</Text>
           <View style={[repStyles.gradeBadge, { borderColor: color }]}>
             <Text style={[repStyles.grade, { color }]}>{rep.quality.grade}</Text>
           </View>
@@ -318,7 +300,13 @@ const DEMO_REPORT: AnalysisReport = {
     rep_durations: [0],
   },
   reps: [
-    { id: 1, quality: { score: 0, grade: "N/A" }, timing: { duration_seconds: 0 }, form: { issues: [], is_perfect: false }, metrics: { knee_angle: 0, back_lean: 0 } },
+    {
+      id: 1,
+      quality: { score: 0, grade: "N/A" },
+      timing: { duration_seconds: 0 },
+      form: { issues: [], is_perfect: false },
+      metrics: { knee_angle: 0, back_lean: 0 },
+    },
   ],
 };
 
@@ -332,37 +320,62 @@ function getAiFeedback(report: AnalysisReport): string {
     return `Incredible session — ${reps} reps with near-perfect mechanics. Your consistency is paying off. Keep this momentum!`;
   }
   if (performance_tier === "good") {
-    if (topIssue) return `Solid work across ${reps} reps! Main area to target: "${topIssue}". Lock that in and you'll break into excellent territory.`;
+    if (topIssue)
+      return `Solid work across ${reps} reps! Main area to target: "${topIssue}". Lock that in and you'll break into excellent territory.`;
     return `Good session with ${reps} clean reps. Small refinements in tempo will push your score higher next time.`;
   }
-  if (topIssue) return `${reps} reps recorded. Your biggest limiter right now is "${topIssue}" — address this first and you'll see immediate improvement.`;
+  if (topIssue)
+    return `${reps} reps recorded. Your biggest limiter right now is "${topIssue}" — address this first and you'll see immediate improvement.`;
   return `${reps} reps completed. Focus on controlled movement and consistent depth. You've got this!`;
 }
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function WorkoutSummaryScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ report?: string }>();
 
+  // ✅ All hooks inside the component
+  const params = useLocalSearchParams<{ report?: string; videoUri?: string }>();
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  // ✅ Thumbnail generation
+  useEffect(() => {
+    if (!params.videoUri) return;
+    VideoThumbnails.getThumbnailAsync(decodeURIComponent(params.videoUri), {
+      time: 1500,
+      quality: 0.85,
+    })
+      .then(({ uri }) => setThumbnail(uri))
+      .catch(() => {});
+  }, [params.videoUri]);
+
+  // ✅ Entrance animation
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  // ✅ Parse report
   let report: AnalysisReport = DEMO_REPORT;
   try {
     if (params.report) {
-  const raw = JSON.parse(decodeURIComponent(params.report));
-  const parsed = raw.report ?? raw;
-
-  if (
-    parsed?.summary?.average_quality?.score !== undefined &&
-    parsed?.metadata?.exercise_type &&
-    parsed?.issues &&
-    parsed?.analytics &&
-    Array.isArray(parsed?.reps)
-  ) {
-    report = parsed as AnalysisReport;
-  } else {
-    console.warn("[WorkoutSummary] Invalid structure:", parsed);
-  }
-}
-
+      const raw = JSON.parse(decodeURIComponent(params.report));
+      const parsed = raw.report ?? raw;
+      if (
+        parsed?.summary?.average_quality?.score !== undefined &&
+        parsed?.metadata?.exercise_type &&
+        parsed?.issues &&
+        parsed?.analytics &&
+        Array.isArray(parsed?.reps)
+      ) {
+        report = parsed as AnalysisReport;
+      } else {
+        console.warn("[WorkoutSummary] Invalid structure:", parsed);
+      }
+    }
   } catch (e) {
     console.warn("[WorkoutSummary] Failed to parse report param — using demo data.", e);
   }
@@ -374,16 +387,6 @@ export default function WorkoutSummaryScreen() {
   const exerciseName = metadata.exercise_type.toUpperCase();
   const aiFeedback = getAiFeedback(report);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
   return (
     <View style={styles.root}>
       <ScrollView
@@ -394,11 +397,10 @@ export default function WorkoutSummaryScreen() {
         {/* ── HERO ─────────────────────────────────────────────────────── */}
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <View style={styles.heroWrap}>
-            {/* Camera frame image */}
             <View style={styles.imageFrame}>
               <View style={[styles.frameBorder, { borderColor: overallColor }]}>
                 {/* Corners */}
-                {["TL","TR","BL","BR"].map((pos) => (
+                {["TL", "TR", "BL", "BR"].map((pos) => (
                   <View
                     key={pos}
                     style={[
@@ -413,13 +415,18 @@ export default function WorkoutSummaryScreen() {
                     ]}
                   />
                 ))}
-                <Image source={WORKOUT_IMAGE} style={styles.heroImage} resizeMode="cover" />
-                {/* Gradient overlay */}
+
+                {/* ✅ Thumbnail from video, fallback to static image */}
+                {thumbnail ? (
+                  <Image source={{ uri: thumbnail }} style={styles.heroImage} resizeMode="cover" />
+                ) : (
+                  <Image source={WORKOUT_IMAGE} style={styles.heroImage} resizeMode="cover" />
+                )}
+
                 <LinearGradient
                   colors={["transparent", "rgba(0,0,0,0.75)"]}
                   style={styles.heroGradient}
                 />
-                {/* Exercise label */}
                 <View style={[styles.exerciseBadge, { borderColor: overallColor }]}>
                   <Text style={[styles.exerciseBadgeText, { color: overallColor }]}>
                     {exerciseName}
@@ -428,11 +435,16 @@ export default function WorkoutSummaryScreen() {
               </View>
             </View>
 
-            {/* Score + tier overlay below image */}
+            {/* Score banner */}
             <View style={styles.scoreBanner}>
               <View style={styles.scoreBannerLeft}>
                 <Text style={styles.scoreBannerTitle}>ANALYSIS COMPLETE</Text>
-                <View style={[styles.tierPill, { backgroundColor: `${tierC1}22`, borderColor: tierC1 }]}>
+                <View
+                  style={[
+                    styles.tierPill,
+                    { backgroundColor: `${tierC1}22`, borderColor: tierC1 },
+                  ]}
+                >
                   <View style={[styles.tierDot, { backgroundColor: tierC1 }]} />
                   <Text style={[styles.tierText, { color: tierC1 }]}>
                     {tierLabel(summary.performance_tier)}
@@ -459,14 +471,20 @@ export default function WorkoutSummaryScreen() {
               { key: "Quality", val: overallScore },
               { key: "Reps", val: summary.total_reps, unit: "" },
               { key: "Grade", val: summary.average_quality.grade, isText: true },
-              { key: "Duration", val: metadata.duration_seconds.toFixed(0), unit: "s", isText: true },
+              {
+                key: "Duration",
+                val: metadata.duration_seconds.toFixed(0),
+                unit: "s",
+                isText: true,
+              },
             ].map(({ key, val, unit, isText }) => {
               const numVal = typeof val === "number" ? val : parseFloat(String(val));
               const displayColor = isText ? "rgba(255,255,255,0.9)" : scoreColor(numVal);
               return (
                 <View key={key} style={styles.metricTile}>
                   <Text style={[styles.metricTileVal, { color: displayColor }]}>
-                    {val}{unit ?? (isText ? "" : "")}
+                    {val}
+                    {unit ?? (isText ? "" : "")}
                   </Text>
                   <Text style={styles.metricTileKey}>{key}</Text>
                 </View>
@@ -483,7 +501,13 @@ export default function WorkoutSummaryScreen() {
               {issues.overall.map((issue, i) => {
                 const freq = issues.frequency[issue] ?? 0;
                 return (
-                  <View key={i} style={[styles.issueItem, i < issues.overall.length - 1 && styles.issueItemBorder]}>
+                  <View
+                    key={i}
+                    style={[
+                      styles.issueItem,
+                      i < issues.overall.length - 1 && styles.issueItemBorder,
+                    ]}
+                  >
                     <View style={styles.issueLeft}>
                       <View style={styles.issueIconWrap}>
                         <Ionicons name="warning-outline" size={14} color="#F87171" />
@@ -517,10 +541,7 @@ export default function WorkoutSummaryScreen() {
           <Text style={styles.sectionLabel}>AI COACH</Text>
           <View style={styles.aiCard}>
             <View style={styles.aiAvatarWrap}>
-              <LinearGradient
-                colors={[tierC1, tierC2]}
-                style={styles.aiAvatar}
-              >
+              <LinearGradient colors={[tierC1, tierC2]} style={styles.aiAvatar}>
                 <Text style={{ fontSize: 22 }}>🤖</Text>
               </LinearGradient>
               <View style={[styles.aiOnline, { backgroundColor: tierC1 }]} />
@@ -676,7 +697,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metricTileVal: { fontSize: 28, fontWeight: "800" },
-  metricTileKey: { color: "rgba(255,255,255,0.35)", fontSize: 11, fontWeight: "600", letterSpacing: 0.5 },
+  metricTileKey: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+  },
 
   // ── Issues ────────────────────────────────────────────────────────────────
   issuesCard: {
