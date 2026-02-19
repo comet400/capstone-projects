@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, Pressable, Dimensions } from "react-native";
-import { useState, useEffect } from "react";
-import { MaterialIcons, Ionicons } from "@expo/vector-icons";
+import { View, Text, StyleSheet, Pressable, Dimensions, Alert } from "react-native";
+import { useState, useEffect, useRef } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { CameraView, CameraType, useCameraPermissions } from "expo-camera";
 import Reanimated, {
     useSharedValue,
     useAnimatedStyle,
@@ -9,11 +10,16 @@ import Reanimated, {
     withTiming,
     Easing,
     FadeIn,
-    FadeOut
+    FadeOut,
 } from "react-native-reanimated";
 import { Colors, Spacing, Typography, IconSizes } from "@/constants/design";
 
 const { width } = Dimensions.get("window");
+
+// ── Update this to your Express server IP/port ──────────────────────────────
+const API_BASE = "http://127.0.0.1:5825";
+// ────────────────────────────────────────────────────────────────────────────
+
 const EXERCISES = ["Squat", "Deadlift", "Bench Press", "Row", "Overhead Press"];
 
 const PROCESSING_STEPS = [
@@ -25,16 +31,17 @@ const PROCESSING_STEPS = [
 
 export default function CameraScreen() {
     const router = useRouter();
+    const [permission, requestPermission] = useCameraPermissions();
+
     const [isRecording, setIsRecording] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [processingStep, setProcessingStep] = useState(0);
     const [selectedMode, setSelectedMode] = useState("Squat");
 
-    // Animation values
+    const cameraRef = useRef<CameraView>(null);
     const scanLineY = useSharedValue(0);
 
     useEffect(() => {
-        // Start scanning animation
         scanLineY.value = withRepeat(
             withTiming(1, { duration: 2000, easing: Easing.linear }),
             -1,
@@ -46,37 +53,104 @@ export default function CameraScreen() {
         top: `${scanLineY.value * 100}%`,
     }));
 
-    const handleRecordPress = () => {
+    // ── Permission gate ──────────────────────────────────────────────────────
+    useEffect(() => {
+        if (permission && !permission.granted) {
+            requestPermission();
+        }
+    }, [permission]);
+
+    // ── Recording ────────────────────────────────────────────────────────────
+    const handleRecordPress = async () => {
+        if (!cameraRef.current) return;
+
         if (isRecording) {
+            // Stop → triggers onRecordingFinished
             setIsRecording(false);
-            startProcessing();
+            cameraRef.current.stopRecording();
         } else {
             setIsRecording(true);
+            try {
+                // recordAsync resolves when stopRecording() is called
+                const result = await cameraRef.current.recordAsync({
+                    maxDuration: 120, // safety cap – 2 min
+                });
+                if (result?.uri) {
+                    await uploadVideo(result.uri);
+                }
+            } catch (err: any) {
+                setIsRecording(false);
+                Alert.alert("Recording Error", err?.message ?? "Could not start recording.");
+            }
         }
     };
 
-    const startProcessing = () => {
+    // ── Upload & process ─────────────────────────────────────────────────────
+    const uploadVideo = async (uri: string) => {
         setIsProcessing(true);
         setProcessingStep(0);
 
-        // Simulate processing steps
-        let step = 0;
-        const interval = setInterval(() => {
-            step++;
-            if (step < PROCESSING_STEPS.length) {
-                setProcessingStep(step);
-            } else {
-                clearInterval(interval);
-                finishProcessing();
+        // Animate through the first 3 steps while the network request is in flight
+        const stepInterval = setInterval(() => {
+            setProcessingStep((prev) => {
+                if (prev < PROCESSING_STEPS.length - 2) return prev + 1;
+                clearInterval(stepInterval);
+                return prev;
+            });
+        }, 1200);
+
+        try {
+            const formData = new FormData();
+            formData.append("exercise", selectedMode);
+            // React Native's FormData accepts { uri, name, type } objects
+            formData.append("video", {
+                uri,
+                name: "workout.mp4",
+                type: "video/mp4",
+            } as any);
+
+            const response = await fetch(`${API_BASE}/api/analyze`, {
+                method: "POST",
+                body: formData,
+                // Do NOT set Content-Type manually – RN will add the boundary automatically
+            });
+
+            clearInterval(stepInterval);
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Server error ${response.status}: ${text}`);
             }
-        }, 1500);
+
+            // Show final step as "done" briefly before navigating
+            setProcessingStep(PROCESSING_STEPS.length - 1);
+            const data = await response.json();
+
+            setTimeout(() => {
+                setIsProcessing(false);
+                // Pass analysis results to the summary screen via query params
+                router.push({
+                    pathname: "/workout-summary",
+                    params: {
+                        exercise: data.exercise,
+                        totalReps: String(data.total_reps),
+                        averageQuality: String(data.average_quality),
+                        report: data.report,
+                    },
+                });
+            }, 600);
+        } catch (err: any) {
+            clearInterval(stepInterval);
+            setIsProcessing(false);
+            Alert.alert(
+                "Analysis Failed",
+                err?.message ?? "Could not reach the server. Check your API_BASE URL.",
+                [{ text: "OK" }]
+            );
+        }
     };
 
-    const finishProcessing = () => {
-        setIsProcessing(false);
-        router.push("/workout-summary");
-    };
-
+    // ── Processing screen ────────────────────────────────────────────────────
     if (isProcessing) {
         return (
             <View style={styles.processingContainer}>
@@ -87,7 +161,6 @@ export default function CameraScreen() {
                 >
                     <View style={styles.spinnerContainer}>
                         <Ionicons name="scan-outline" size={64} color={Colors.secondary} />
-                        <Reanimated.View style={[styles.scanSpinner]} />
                     </View>
 
                     <Text style={styles.processingTitle}>AI ANALYSIS IN PROGRESS</Text>
@@ -96,21 +169,32 @@ export default function CameraScreen() {
                         {PROCESSING_STEPS.map((step, index) => {
                             const isActive = index === processingStep;
                             const isDone = index < processingStep;
-
                             return (
                                 <View key={step} style={styles.stepRow}>
-                                    <View style={[
-                                        styles.stepDot,
-                                        isActive && styles.stepDotActive,
-                                        isDone && styles.stepDotDone
-                                    ]}>
-                                        {isDone && <Ionicons name="checkmark" size={12} color={Colors.background} />}
+                                    <View
+                                        style={[
+                                            styles.stepDot,
+                                            isActive && styles.stepDotActive,
+                                            isDone && styles.stepDotDone,
+                                        ]}
+                                    >
+                                        {isDone && (
+                                            <Ionicons
+                                                name="checkmark"
+                                                size={12}
+                                                color={Colors.background}
+                                            />
+                                        )}
                                     </View>
-                                    <Text style={[
-                                        styles.stepText,
-                                        isActive && styles.stepTextActive,
-                                        isDone && styles.stepTextDone
-                                    ]}>{step}</Text>
+                                    <Text
+                                        style={[
+                                            styles.stepText,
+                                            isActive && styles.stepTextActive,
+                                            isDone && styles.stepTextDone,
+                                        ]}
+                                    >
+                                        {step}
+                                    </Text>
                                 </View>
                             );
                         })}
@@ -120,6 +204,20 @@ export default function CameraScreen() {
         );
     }
 
+    // ── Camera permission not yet granted ────────────────────────────────────
+    if (!permission?.granted) {
+        return (
+            <View style={styles.permissionContainer}>
+                <Ionicons name="camera-outline" size={48} color={Colors.textSecondary} />
+                <Text style={styles.permissionText}>Camera permission is required.</Text>
+                <Pressable style={styles.permissionButton} onPress={requestPermission}>
+                    <Text style={styles.permissionButtonText}>Grant Permission</Text>
+                </Pressable>
+            </View>
+        );
+    }
+
+    // ── Main camera UI ───────────────────────────────────────────────────────
     return (
         <View style={styles.container}>
             {/* HUD Header */}
@@ -133,16 +231,19 @@ export default function CameraScreen() {
                 </View>
             </View>
 
-            {/* Main Camera Viewfinder */}
+            {/* Camera Viewfinder */}
             <View style={styles.cameraFrame}>
-                <View style={styles.cameraView}>
-                    {/* Simulated Camera Feed Background */}
-                    <Text style={styles.cameraPlaceholder}>Camera Signal Input...</Text>
+                <CameraView
+                    ref={cameraRef}
+                    style={StyleSheet.absoluteFill}
+                    facing="back"
+                    mode="video"
+                />
 
-                    {/* Scanning Line */}
+                {/* HUD overlays sit on top of the real camera feed */}
+                <View style={styles.hudLayer} pointerEvents="none">
                     <Reanimated.View style={[styles.scanLine, scanLineStyle]} />
 
-                    {/* Grid Overlay */}
                     <View style={styles.gridOverlay}>
                         <View style={styles.gridLineVertical} />
                         <View style={styles.gridLineVertical} />
@@ -150,7 +251,6 @@ export default function CameraScreen() {
                         <View style={styles.gridLineHorizontal} />
                     </View>
 
-                    {/* Corner Brackets */}
                     <View style={[styles.corner, styles.cornerTL]} />
                     <View style={[styles.corner, styles.cornerTR]} />
                     <View style={[styles.corner, styles.cornerBL]} />
@@ -165,13 +265,17 @@ export default function CameraScreen() {
                             onPress={() => setSelectedMode(mode)}
                             style={[
                                 styles.modeChip,
-                                selectedMode === mode && styles.modeChipActive
+                                selectedMode === mode && styles.modeChipActive,
                             ]}
                         >
-                            <Text style={[
-                                styles.modeText,
-                                selectedMode === mode && styles.modeTextActive
-                            ]}>{mode}</Text>
+                            <Text
+                                style={[
+                                    styles.modeText,
+                                    selectedMode === mode && styles.modeTextActive,
+                                ]}
+                            >
+                                {mode}
+                            </Text>
                         </Pressable>
                     ))}
                 </View>
@@ -180,33 +284,31 @@ export default function CameraScreen() {
             {/* Controls */}
             <View style={styles.controls}>
                 <Pressable
-                    style={[
-                        styles.recordButton,
-                        isRecording && styles.recordingActive,
-                    ]}
+                    style={[styles.recordButton, isRecording && styles.recordingActive]}
                     onPress={handleRecordPress}
                 >
-                    <View style={[
-                        styles.recordInner,
-                        isRecording && styles.recordInnerActive
-                    ]} />
+                    <View
+                        style={[
+                            styles.recordInner,
+                            isRecording && styles.recordInnerActive,
+                        ]}
+                    />
                 </Pressable>
                 <Text style={styles.instructionText}>
-                    {isRecording ? "Analyzing Form..." : "Tap to Start Analysis"}
+                    {isRecording ? "Analyzing Form…  Tap to Stop" : "Tap to Start Analysis"}
                 </Text>
             </View>
         </View>
     );
 }
 
+// ── Styles (unchanged from original + permission screen additions) ───────────
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Colors.background,
         paddingTop: 60,
     },
-
-    // Header
     headerRow: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -230,14 +332,8 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.danger,
         opacity: 0.3,
     },
-    recDotActive: { // Add blinking animation if possible, static for now
-        opacity: 1,
-    },
-    recText: {
-        color: Colors.danger,
-        fontWeight: "700",
-        fontSize: 12,
-    },
+    recDotActive: { opacity: 1 },
+    recText: { color: Colors.danger, fontWeight: "700", fontSize: 12 },
     badgeContainer: {
         borderWidth: 1,
         borderColor: Colors.secondary,
@@ -251,28 +347,17 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         letterSpacing: 1,
     },
-
-    // Camera Frame
     cameraFrame: {
         flex: 1,
         marginHorizontal: 16,
         borderRadius: 24,
         overflow: "hidden",
         position: "relative",
-    },
-    cameraView: {
-        flex: 1,
         backgroundColor: "#1a1a1a",
-        justifyContent: "center",
-        alignItems: "center",
-        position: "relative",
     },
-    cameraPlaceholder: {
-        color: "#444",
-        fontFamily: "monospace",
+    hudLayer: {
+        ...StyleSheet.absoluteFillObject,
     },
-
-    // HUD Elements
     scanLine: {
         position: "absolute",
         left: 0,
@@ -316,8 +401,6 @@ const styles = StyleSheet.create({
     cornerTR: { top: 20, right: 20, borderLeftWidth: 0, borderBottomWidth: 0 },
     cornerBL: { bottom: 20, left: 20, borderRightWidth: 0, borderTopWidth: 0 },
     cornerBR: { bottom: 20, right: 20, borderLeftWidth: 0, borderTopWidth: 0 },
-
-    // Mode Selector
     modeSelector: {
         position: "absolute",
         bottom: 20,
@@ -339,16 +422,8 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primary,
         borderColor: Colors.primary,
     },
-    modeText: {
-        color: Colors.textSecondary,
-        fontSize: 12,
-        fontWeight: "600",
-    },
-    modeTextActive: {
-        color: "#fff",
-    },
-
-    // Controls
+    modeText: { color: Colors.textSecondary, fontSize: 12, fontWeight: "600" },
+    modeTextActive: { color: "#fff" },
     controls: {
         height: 160,
         alignItems: "center",
@@ -365,26 +440,15 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    recordingActive: {
-        borderColor: Colors.danger,
-    },
+    recordingActive: { borderColor: Colors.danger },
     recordInner: {
         width: "100%",
         height: "100%",
         borderRadius: 40,
         backgroundColor: Colors.danger,
     },
-    recordInnerActive: {
-        width: "50%",
-        height: "50%",
-        borderRadius: 8,
-    },
-    instructionText: {
-        color: Colors.textSecondary,
-        fontSize: 14,
-    },
-
-    // Processing Screen
+    recordInnerActive: { width: "50%", height: "50%", borderRadius: 8 },
+    instructionText: { color: Colors.textSecondary, fontSize: 14 },
     processingContainer: {
         flex: 1,
         backgroundColor: Colors.background,
@@ -392,17 +456,8 @@ const styles = StyleSheet.create({
         alignItems: "center",
         padding: 40,
     },
-    processingContent: {
-        width: "100%",
-        alignItems: "center",
-    },
-    spinnerContainer: {
-        marginBottom: 40,
-        position: "relative",
-    },
-    scanSpinner: {
-        // Simple placeholder for more complex animation
-    },
+    processingContent: { width: "100%", alignItems: "center" },
+    spinnerContainer: { marginBottom: 40 },
     processingTitle: {
         color: Colors.text,
         fontSize: 20,
@@ -411,15 +466,8 @@ const styles = StyleSheet.create({
         marginBottom: 40,
         textAlign: "center",
     },
-    stepsContainer: {
-        width: "100%",
-        gap: 20,
-    },
-    stepRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 16,
-    },
+    stepsContainer: { width: "100%", gap: 20 },
+    stepRow: { flexDirection: "row", alignItems: "center", gap: 16 },
     stepDot: {
         width: 24,
         height: 24,
@@ -428,21 +476,25 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    stepDotActive: {
+    stepDotActive: { backgroundColor: Colors.primary },
+    stepDotDone: { backgroundColor: Colors.secondary },
+    stepText: { color: Colors.textSecondary, fontSize: 16 },
+    stepTextActive: { color: Colors.primary, fontWeight: "700" },
+    stepTextDone: { color: Colors.text },
+    permissionContainer: {
+        flex: 1,
+        backgroundColor: Colors.background,
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 16,
+        padding: 40,
+    },
+    permissionText: { color: Colors.textSecondary, fontSize: 16, textAlign: "center" },
+    permissionButton: {
         backgroundColor: Colors.primary,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
     },
-    stepDotDone: {
-        backgroundColor: Colors.secondary,
-    },
-    stepText: {
-        color: Colors.textSecondary,
-        fontSize: 16,
-    },
-    stepTextActive: {
-        color: Colors.primary,
-        fontWeight: "700",
-    },
-    stepTextDone: {
-        color: Colors.text,
-    },
+    permissionButtonText: { color: "#fff", fontWeight: "700" },
 });
