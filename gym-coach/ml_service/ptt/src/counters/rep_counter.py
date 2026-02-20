@@ -124,45 +124,66 @@ class RepCounter(BaseCounter):
         return False
 
     def _process_pushup(self, frame_num: int, metrics: FormMetrics) -> bool:
-        """Process push-up specific logic"""
+        """Lenient push-up detection"""
+
         if "avg_elbow" not in metrics.angles:
             return False
 
-        elbow = self._smooth(self._angle_buffer, metrics.angles["avg_elbow"])
+        elbow_raw = metrics.angles["avg_elbow"]
+        elbow = self._smooth(self._angle_buffer, elbow_raw)
+
         if math.isnan(elbow):
             return False
 
-        down_th = PUSHUP_PARAMS["elbow_angle_down"]
-        up_th = PUSHUP_PARAMS["elbow_angle_up"]
+        # ───── More lenient thresholds ─────
+        down_th = PUSHUP_PARAMS["elbow_angle_down"] + 5      # allow shallower bottom
+        up_th = PUSHUP_PARAMS["elbow_angle_up"] - 8          # allow partial lockout
 
+        # Reduce required sustained frames
+        min_frames = max(2, self.min_phase_frames - 2)
+
+        # ─────────────────────────────
         if self.state == "up":
+
             if elbow < down_th:
                 self._down_counter += 1
             else:
-                self._down_counter = 0
+                # soften reset instead of hard zero
+                self._down_counter = max(0, self._down_counter - 1)
 
-            if self._down_counter >= self.min_phase_frames:
+            if self._down_counter >= min_frames:
                 self.state = "down"
                 self.current_rep_start = frame_num
                 self._down_counter = 0
 
         elif self.state == "down":
+
             if elbow > up_th:
                 self._up_counter += 1
             else:
-                self._up_counter = 0
+                self._up_counter = max(0, self._up_counter - 1)
 
-            if self._up_counter >= self.min_phase_frames:
+            if self._up_counter >= min_frames:
+
                 duration = frame_num - (self.current_rep_start or frame_num)
-                if self.current_rep_start is not None and self.min_rep_frames <= duration <= self.max_rep_frames:
+
+                # Relax duration window
+                if (
+                    self.current_rep_start is not None
+                    and duration >= self.min_rep_frames * 0.5
+                    and duration <= self.max_rep_frames * 1.5
+                ):
                     self._finalize_rep(frame_num)
                     self.state = "up"
                     self._up_counter = 0
                     return True
+
+                # Even if duration fails slightly, still reset state
                 self.state = "up"
                 self._up_counter = 0
 
         return False
+
 
     def _process_pullup(self, frame_num: int, metrics: FormMetrics) -> bool:
         """Process pull-up specific logic"""
