@@ -1,7 +1,7 @@
 const { MongoClient } = require("mongodb");
 const path = require('path');
 require("dotenv").config({ path: path.resolve(__dirname, "../config.env") });
-async function main() {
+async function connectMongo() {
   const uri = process.env.ATLAS_URI;
   const client = new MongoClient(uri);
 
@@ -24,4 +24,5 @@ async function main() {
   }
 }
 
-main();
+module.exports = { connectMongo };
+connectMongo();
