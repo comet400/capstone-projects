@@ -4,6 +4,8 @@ import {
   StyleSheet,
   Pressable,
   Alert,
+  Modal,
+  FlatList,
 } from "react-native";
 import { useState, useEffect, useRef } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,7 +14,16 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { Colors } from "@/constants/design";
 
 // Update this to your backend
-const API_BASE = "http://10.0.0.7:5825";
+const API_BASE = "http://10.144.106.197:5825";
+
+const EXERCISES = [
+  "Squat",
+  "Pushup",
+  "Pullup",
+  "Bench Press",
+  "Bicep Curl",
+  "Deadlift",
+];
 
 const PROCESSING_STEPS = [
   "Uploading Video",
@@ -27,6 +38,8 @@ export default function CameraScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
   const [facing, setFacing] = useState<"front" | "back">("back");
+  const [selectedExercise, setSelectedExercise] = useState("Squat");
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const cameraRef = useRef<CameraView>(null);
 
   useEffect(() => {
@@ -35,7 +48,7 @@ export default function CameraScreen() {
     }
   }, [permission]);
 
-  //  recording
+  // Recording
   const handleRecordPress = async () => {
     if (!cameraRef.current) return;
 
@@ -65,26 +78,21 @@ export default function CameraScreen() {
     }
   };
 
-
-
   const uploadVideo = async (uri: string) => {
     setIsProcessing(true);
-
     setProcessingStep(0);
-
 
     const stepInterval = setInterval(() => {
       setProcessingStep((prev) => {
-        if (prev < PROCESSING_STEPS.length - 1) {
-          return prev + 1;
-        }
+        if (prev < PROCESSING_STEPS.length - 1) return prev + 1;
         return prev;
-        
       });
     }, 1200);
 
     try {
       const formData = new FormData();
+      // ✅ FIX: include exercise so the backend knows what to analyze
+      formData.append("exercise", selectedExercise);
       formData.append("video", {
         uri,
         name: "workout.mp4",
@@ -111,6 +119,7 @@ export default function CameraScreen() {
           pathname: "/workout-summary",
           params: {
             report: encodeURIComponent(JSON.stringify(data)),
+            videoUri: uri,
           },
         });
       }, 600);
@@ -124,7 +133,7 @@ export default function CameraScreen() {
     }
   };
 
-  // Proces Screen
+  // Processing Screen
   if (isProcessing) {
     return (
       <View style={styles.processingContainer}>
@@ -134,15 +143,10 @@ export default function CameraScreen() {
           color={Colors.primary}
           style={{ marginBottom: 30 }}
         />
-
-        <Text style={styles.processingTitle}>
-          Analyzing Your Workout
-        </Text>
-
+        <Text style={styles.processingTitle}>Analyzing Your Workout</Text>
         {PROCESSING_STEPS.map((step, index) => {
           const isActive = index === processingStep;
           const isDone = index < processingStep;
-
           return (
             <View key={step} style={styles.stepRow}>
               <View
@@ -152,13 +156,7 @@ export default function CameraScreen() {
                   isDone && styles.stepDotDone,
                 ]}
               >
-                {isDone && (
-                  <Ionicons
-                    name="checkmark"
-                    size={14}
-                    color="#000"
-                  />
-                )}
+                {isDone && <Ionicons name="checkmark" size={14} color="#000" />}
               </View>
               <Text
                 style={[
@@ -180,18 +178,12 @@ export default function CameraScreen() {
   if (!permission?.granted) {
     return (
       <View style={styles.permissionContainer}>
-        <Ionicons
-          name="camera-outline"
-          size={64}
-          color={Colors.textSecondary}
-        />
+        <Ionicons name="camera-outline" size={64} color={Colors.textSecondary} />
         <Text style={styles.permissionText}>
           Camera permission is required.
         </Text>
         <Pressable style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>
-            Grant Permission
-          </Text>
+          <Text style={styles.permissionButtonText}>Grant Permission</Text>
         </Pressable>
       </View>
     );
@@ -203,11 +195,24 @@ export default function CameraScreen() {
       {/* Top Bar */}
       <View style={styles.topBar}>
         <Pressable onPress={() => router.back()}>
-          <Ionicons
-            name="arrow-back"
-            size={26}
-            color={Colors.text}
-          />
+          <Ionicons name="arrow-back" size={26} color={Colors.text} />
+        </Pressable>
+
+        {/* Exercise badge + settings button */}
+        <Pressable
+          style={styles.exerciseBadge}
+          onPress={() => setSettingsVisible(true)}
+        >
+          <Ionicons name="barbell-outline" size={14} color={Colors.primary} />
+          <Text style={styles.exerciseBadgeText}>{selectedExercise}</Text>
+          <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
+        </Pressable>
+
+        <Pressable
+          onPress={() => setSettingsVisible(true)}
+          style={styles.settingsButton}
+        >
+          <Ionicons name="settings-outline" size={24} color={Colors.text} />
         </Pressable>
       </View>
 
@@ -225,32 +230,23 @@ export default function CameraScreen() {
       <View style={styles.controls}>
         <Text style={styles.instruction}>
           {isRecording
-            ? "Recording... Tap to stop"
+            ? "Recording… Tap to stop"
             : "Tap to start recording"}
         </Text>
 
         <View style={styles.buttonRow}>
           <Pressable
             onPress={() =>
-              setFacing((prev) =>
-                prev === "back" ? "front" : "back"
-              )
+              setFacing((prev) => (prev === "back" ? "front" : "back"))
             }
             style={styles.smallButton}
           >
-            <Ionicons
-              name="camera-reverse-outline"
-              size={24}
-              color={Colors.text}
-            />
+            <Ionicons name="camera-reverse-outline" size={24} color={Colors.text} />
           </Pressable>
 
           <Pressable
             onPress={handleRecordPress}
-            style={[
-              styles.recordButton,
-              isRecording && styles.recording,
-            ]}
+            style={[styles.recordButton, isRecording && styles.recording]}
           >
             <View
               style={[
@@ -263,6 +259,60 @@ export default function CameraScreen() {
           <View style={{ width: 50 }} />
         </View>
       </View>
+
+      {/* Exercise Settings Modal */}
+      <Modal
+        visible={settingsVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSettingsVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setSettingsVisible(false)}
+        >
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Select Exercise</Text>
+            <Text style={styles.modalSubtitle}>
+              Choose the exercise so the AI can give you targeted feedback.
+            </Text>
+
+            <FlatList
+              data={EXERCISES}
+              keyExtractor={(item) => item}
+              contentContainerStyle={{ gap: 10 }}
+              renderItem={({ item }) => {
+                const isSelected = item === selectedExercise;
+                return (
+                  <Pressable
+                    style={[
+                      styles.exerciseOption,
+                      isSelected && styles.exerciseOptionSelected,
+                    ]}
+                    onPress={() => {
+                      setSelectedExercise(item);
+                      setSettingsVisible(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.exerciseOptionText,
+                        isSelected && styles.exerciseOptionTextSelected,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
+                    )}
+                  </Pressable>
+                );
+              }}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -276,8 +326,40 @@ const styles = StyleSheet.create({
   },
 
   topBar: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 20,
     marginBottom: 16,
+    gap: 12,
+  },
+
+  exerciseBadge: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.primary + "44",
+  },
+
+  exerciseBadgeText: {
+    flex: 1,
+    color: Colors.text,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+
+  settingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   cameraWrapper: {
@@ -327,9 +409,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  recording: {
-    borderColor: Colors.danger,
-  },
+  recording: { borderColor: Colors.danger },
 
   innerCircle: {
     width: "100%",
@@ -344,6 +424,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 
+  // Processing
   processingContainer: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -352,7 +433,6 @@ const styles = StyleSheet.create({
     padding: 40,
     gap: 20,
   },
-
   processingTitle: {
     fontSize: 20,
     fontWeight: "700",
@@ -360,14 +440,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     textAlign: "center",
   },
-
-  stepRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-  },
-
+  stepRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 },
   stepDot: {
     width: 22,
     height: 22,
@@ -376,29 +449,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  stepDotActive: { backgroundColor: Colors.primary },
+  stepDotDone: { backgroundColor: Colors.secondary },
+  stepText: { color: Colors.textSecondary, fontSize: 15 },
+  stepTextActive: { color: Colors.primary, fontWeight: "600" },
+  stepTextDone: { color: Colors.text },
 
-  stepDotActive: {
-    backgroundColor: Colors.primary,
-  },
-
-  stepDotDone: {
-    backgroundColor: Colors.secondary,
-  },
-
-  stepText: {
-    color: Colors.textSecondary,
-    fontSize: 15,
-  },
-
-  stepTextActive: {
-    color: Colors.primary,
-    fontWeight: "600",
-  },
-
-  stepTextDone: {
-    color: Colors.text,
-  },
-
+  // Permission
   permissionContainer: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -407,22 +464,69 @@ const styles = StyleSheet.create({
     gap: 20,
     padding: 40,
   },
-
-  permissionText: {
-    color: Colors.textSecondary,
-    fontSize: 16,
-    textAlign: "center",
-  },
-
+  permissionText: { color: Colors.textSecondary, fontSize: 16, textAlign: "center" },
   permissionButton: {
     backgroundColor: Colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
   },
+  permissionButtonText: { color: "#fff", fontWeight: "700" },
 
-  permissionButtonText: {
-    color: "#fff",
+  // Settings Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.surface,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    color: Colors.text,
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  modalSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  exerciseOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  exerciseOptionSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + "18",
+  },
+  exerciseOptionText: {
+    color: Colors.textSecondary,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  exerciseOptionTextSelected: {
+    color: Colors.primary,
     fontWeight: "700",
   },
 });
