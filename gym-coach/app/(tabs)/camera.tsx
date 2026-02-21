@@ -14,7 +14,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { Colors } from "@/constants/design";
 
 // Update this to your backend
-const API_BASE = "http://10.144.106.197:5825";
+const API_BASE = "http://10.0.0.7:5825";
 
 const EXERCISES = [
   "Squat",
