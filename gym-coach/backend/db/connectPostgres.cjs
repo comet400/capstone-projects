@@ -1,13 +1,12 @@
-const { Pool } = require('pg');
-const path = require('path');
+const { Pool } = require("pg");
+const path = require("path");
 
-// Load environment variables
 require("dotenv").config({ path: path.resolve(__dirname, "../config.env") });
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false // Necessary for connecting to cloud databases like Supabase
+    rejectUnauthorized: false
   }
 });
 
@@ -22,9 +21,10 @@ const connectPostgres = async () => {
   }
 };
 
-// Immediately test the connection if running this file directly
-if (require.main === module) {
-  connectPostgres();
-}
+//
+// if (require.main === module) {
+//   connectPostgres();
+// }
+// connectPostgres();
 
 module.exports = { pool, connectPostgres };

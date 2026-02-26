@@ -1,9 +1,9 @@
 {
   "members": {
     "qm5836": {
-      "hours_balance": 53.54833333333333,
+      "hours_balance": 69.54833333333333,
       "project_start": "2026-01-22T22:22:37.128899",
-      "last_thursday": "2026-02-12",
+      "last_thursday": "2026-02-19",
       "logs": [
         {
           "timestamp": "2026-01-23T20:36:42.916919",
@@ -82,13 +82,21 @@
           "description": "Weekly 16-hour allocation added on 2026-02-12",
           "balance_after": 53.54833333333333,
           "member": "qm5836"
+        },
+        {
+          "timestamp": "2026-02-23T12:09:50.365119",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-19",
+          "balance_after": 69.54833333333333,
+          "member": "qm5836"
         }
       ]
     },
     "lv5441": {
-      "hours_balance": 60.0,
+      "hours_balance": 76.0,
       "project_start": "2026-01-22T22:23:00.479180",
-      "last_thursday": "2026-02-12",
+      "last_thursday": "2026-02-19",
       "logs": [
         {
           "timestamp": "2026-01-22T22:49:23.187678",
@@ -131,13 +139,21 @@
           "description": "Weekly 16-hour allocation added on 2026-02-12",
           "balance_after": 60.0,
           "member": "lv5441"
+        },
+        {
+          "timestamp": "2026-02-23T12:09:50.365151",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-19",
+          "balance_after": 76.0,
+          "member": "lv5441"
         }
       ]
     },
     "vn0335": {
-      "hours_balance": 64,
+      "hours_balance": 80,
       "project_start": "2026-01-22T22:48:03.117865",
-      "last_thursday": "2026-02-12",
+      "last_thursday": "2026-02-19",
       "logs": [
         {
           "timestamp": "2026-01-29T11:21:35.277620",
@@ -162,13 +178,21 @@
           "description": "Weekly 16-hour allocation added on 2026-02-12",
           "balance_after": 64,
           "member": "vn0335"
+        },
+        {
+          "timestamp": "2026-02-23T12:09:50.365161",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-19",
+          "balance_after": 80,
+          "member": "vn0335"
         }
       ]
     },
     "rw3110": {
-      "hours_balance": 42.70527777777778,
+      "hours_balance": 49.25333333333334,
       "project_start": "2026-01-23T00:51:34.183556",
-      "last_thursday": "2026-02-12",
+      "last_thursday": "2026-02-19",
       "logs": [
         {
           "timestamp": "2026-01-29T11:21:35.277622",
@@ -274,9 +298,35 @@
           "project": "",
           "balance_after": 42.70527777777778,
           "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-02-23T12:09:50.365169",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-19",
+          "balance_after": 58.70527777777778,
+          "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-02-23T17:55:36.064539",
+          "type": "timer",
+          "hours": 5.483333333333333,
+          "description": "Home page remake, connecting login page to backedn",
+          "project": "",
+          "balance_after": 53.221944444444446,
+          "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-02-25T23:04:48.544027",
+          "type": "timer",
+          "hours": 3.968611111111111,
+          "description": "finished set up for backend for logina and  sign up",
+          "project": "",
+          "balance_after": 49.25333333333334,
+          "member": "rw3110"
         }
       ]
     }
   },
-  "last_saved": "2026-02-18T21:31:46.600188"
+  "last_saved": "2026-02-25T23:04:48.544065"
 }
