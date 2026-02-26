@@ -12,13 +12,12 @@ import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Notifications from "expo-notifications";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system/legacy"; // keep legacy since you use it
 import { Colors } from "@/constants/design";
 
-import { styles } from "../components/CamComponents/CameraScreen.styles";
-import ProcessingOverlay from "../components/CamComponents/ProcessingOverlay";
-import PermissionView from "../components/CamComponents/PermissionView";
-import ExerciseSelectorModal from "../components/CamComponents/ExerciseSelectorModal";
+import { styles } from "./CameraScreen.styles";
+import ProcessingOverlay from "./ProcessingOverlay";
+import PermissionView from "./PermissionView";
+import ExerciseSelectorModal from "./ExerciseSelectorModal";
 
 // ─────────────────────────────────────────────
 // Config
@@ -65,7 +64,7 @@ async function requestNotificationPermission() {
 async function sendLocalNotification(title: string, body: string) {
   await Notifications.scheduleNotificationAsync({
     content: { title, body, sound: true },
-    trigger: null,
+    trigger: null, // immediate
   });
 }
 
@@ -79,41 +78,26 @@ export default function CameraScreen() {
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(0);
-
   const [facing, setFacing] = useState<"front" | "back">("back");
-
-  // Make selection explicit / safer:
-  const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
+  const [selectedExercise, setSelectedExercise] = useState("Squat");
   const [settingsVisible, setSettingsVisible] = useState(false);
 
+  // Pending result while app is backgrounded
   const [pendingResult, setPendingResult] = useState<{
     data: any;
     uri: string;
   } | null>(null);
 
   const cameraRef = useRef<CameraView>(null);
-
-  // Upload/poll
-  const uploadTaskRef = useRef<any>(null);
-  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const isCancelledRef = useRef(false);
-  const activeJobRef = useRef<string | null>(null);
-
-  // Recording timers
+  const abortControllerRef = useRef<AbortController | null>(null);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // IMPORTANT: discard flag to prevent upload after stopRecording()
-  const discardNextRecordingRef = useRef(false);
-
+  const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   // ─────────────────────────────────────────────
-  // Permissions
+  // Permission Auto Request + Notification Permission
   // ─────────────────────────────────────────────
 
   useEffect(() => {
@@ -122,7 +106,7 @@ export default function CameraScreen() {
   }, [permission]);
 
   // ─────────────────────────────────────────────
-  // App State
+  // App State — navigate when returning from background with pending result
   // ─────────────────────────────────────────────
 
   useEffect(() => {
@@ -145,17 +129,13 @@ export default function CameraScreen() {
   }, [pendingResult]);
 
   // ─────────────────────────────────────────────
-  // Cleanup
+  // Cleanup on unmount
   // ─────────────────────────────────────────────
 
   useEffect(() => {
     return () => {
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-      if (stepIntervalRef.current) clearInterval(stepIntervalRef.current);
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-
-      uploadTaskRef.current?.cancelAsync?.().catch(() => {});
-      uploadTaskRef.current = null;
+      clearInterval(recordingTimerRef.current!);
+      clearInterval(stepIntervalRef.current!);
     };
   }, []);
 
@@ -163,19 +143,16 @@ export default function CameraScreen() {
   // Helpers
   // ─────────────────────────────────────────────
 
-  const navigateToSummary = useCallback(
-    (data: any, uri: string) => {
-      setIsProcessing(false);
-      router.push({
-        pathname: "/workout-summary",
-        params: {
-          report: encodeURIComponent(JSON.stringify(data)),
-          videoUri: uri,
-        },
-      });
-    },
-    [router]
-  );
+  const navigateToSummary = useCallback((data: any, uri: string) => {
+    setIsProcessing(false);
+    router.push({
+      pathname: "/workout-summary",
+      params: {
+        report: encodeURIComponent(JSON.stringify(data)),
+        videoUri: uri,
+      },
+    });
+  }, [router]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
@@ -185,27 +162,12 @@ export default function CameraScreen() {
     return `${m}:${s}`;
   };
 
-  const clearStepInterval = () => {
-    if (stepIntervalRef.current) {
-      clearInterval(stepIntervalRef.current);
-      stepIntervalRef.current = null;
-    }
-  };
-
-  const clearPollInterval = () => {
-    if (pollTimerRef.current) {
-      clearInterval(pollTimerRef.current);
-      pollTimerRef.current = null;
-    }
-  };
-
   // ─────────────────────────────────────────────
-  // Recording timer
+  // Recording Logic
   // ─────────────────────────────────────────────
 
   const startRecordingTimer = () => {
     setRecordingSeconds(0);
-    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     recordingTimerRef.current = setInterval(() => {
       setRecordingSeconds((prev) => prev + 1);
     }, 1000);
@@ -219,54 +181,9 @@ export default function CameraScreen() {
     setRecordingSeconds(0);
   };
 
-  // ─────────────────────────────────────────────
-  // Cancel analysis (must stop upload NOW)
-  // ─────────────────────────────────────────────
-
-  const cancelProcessingNow = async () => {
-    isCancelledRef.current = true;
-
-    try {
-      await uploadTaskRef.current?.cancelAsync();
-    } catch {}
-
-    uploadTaskRef.current = null;
-
-    clearPollInterval();
-    activeJobRef.current = null;
-
-    clearStepInterval();
-
-    setIsProcessing(false);
-    setProcessingStep(0);
-  };
-
-  const handleCancelAnalysis = () => {
-    Alert.alert(
-      "Cancel Analysis",
-      "Cancel upload/analysis? Nothing will be sent to the server.",
-      [
-        { text: "Keep Waiting", style: "cancel" },
-        { text: "Cancel", style: "destructive", onPress: cancelProcessingNow },
-      ]
-    );
-  };
-
-  // ─────────────────────────────────────────────
-  // Start/Stop recording
-  // ─────────────────────────────────────────────
-
   const handleRecordPress = async () => {
     if (!cameraRef.current) return;
 
-    // If no exercise chosen, force a quick selection (more intuitive)
-    if (!selectedExercise && !isRecording) {
-      setSettingsVisible(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      return;
-    }
-
-    // Second press: stop (this triggers recordAsync() to resolve)
     if (isRecording) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       cameraRef.current.stopRecording();
@@ -275,10 +192,7 @@ export default function CameraScreen() {
       return;
     }
 
-    // First press: start recording ONLY (no backend)
     try {
-      discardNextRecordingRef.current = false;
-
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       setIsRecording(true);
       startRecordingTimer();
@@ -290,98 +204,53 @@ export default function CameraScreen() {
       stopRecordingTimer();
       setIsRecording(false);
 
-      // If user hit trash/discard, do NOT upload
-      if (discardNextRecordingRef.current) {
-        discardNextRecordingRef.current = false;
-        if (result?.uri) {
-          // best-effort cleanup
-          FileSystem.deleteAsync(result.uri, { idempotent: true }).catch(() => {});
-        }
-        return;
-      }
-
-      // Second press finished -> NOW we call backend
-      if (result?.uri && selectedExercise) {
-        await uploadVideo(result.uri, selectedExercise);
+      if (result?.uri) {
+        await uploadVideo(result.uri);
       }
     } catch (err: any) {
       stopRecordingTimer();
       setIsRecording(false);
-      Alert.alert("Recording Error", err?.message ?? "Could not start recording.");
+      Alert.alert(
+        "Recording Error",
+        err?.message ?? "Could not start recording."
+      );
     }
   };
 
   // ─────────────────────────────────────────────
-  // Polling job status (if you’re using job-based backend)
+  // Cancel Analysis
   // ─────────────────────────────────────────────
 
-  const pollForResult = async (jobId: string, uri: string, exerciseLabel: string) => {
-    return new Promise<void>((resolve) => {
-      clearPollInterval();
-
-      pollTimerRef.current = setInterval(async () => {
-        try {
-          if (isCancelledRef.current) {
-            clearPollInterval();
-            resolve();
-            return;
-          }
-
-          const res = await fetch(`${API_BASE}/api/analyze/${jobId}`);
-          if (!res.ok) return;
-
-          const job = await res.json();
-
-          if (job.status === "done") {
-            clearPollInterval();
-            activeJobRef.current = null;
-            clearStepInterval();
-
-            const result = job.result ?? job;
-
-            if (appStateRef.current !== "active") {
-              setPendingResult({ data: result, uri });
-              setIsProcessing(false);
-              await sendLocalNotification(
-                "Workout Analysis Ready 💪",
-                `Your ${exerciseLabel} analysis is complete. Tap to view your feedback.`
-              );
-              resolve();
-              return;
-            }
-
-            navigateToSummary(result, uri);
-            resolve();
-          }
-
-          if (job.status === "error") {
-            clearPollInterval();
-            activeJobRef.current = null;
-            clearStepInterval();
-
+  const handleCancelAnalysis = () => {
+    Alert.alert(
+      "Cancel Analysis",
+      "Are you sure you want to cancel? Your recording will be discarded.",
+      [
+        { text: "Keep Waiting", style: "cancel" },
+        {
+          text: "Cancel",
+          style: "destructive",
+          onPress: () => {
+            abortControllerRef.current?.abort();
+            clearInterval(stepIntervalRef.current!);
             setIsProcessing(false);
-            Alert.alert("Analysis Failed", job.error ?? "Server error");
-            resolve();
-          }
-        } catch {
-          // ignore
-        }
-      }, 1000);
-    });
+            setProcessingStep(0);
+          },
+        },
+      ]
+    );
   };
 
   // ─────────────────────────────────────────────
-  // Upload (multipart MUST include exercise)
+  // Upload + Analysis
   // ─────────────────────────────────────────────
 
-  const uploadVideo = async (uri: string, exerciseLabel: string) => {
+  const uploadVideo = async (uri: string) => {
     setIsProcessing(true);
     setProcessingStep(0);
 
-    isCancelledRef.current = false;
-    activeJobRef.current = null;
+    abortControllerRef.current = new AbortController();
 
-    clearStepInterval();
     stepIntervalRef.current = setInterval(() => {
       setProcessingStep((prev) =>
         prev < PROCESSING_STEPS.length - 1 ? prev + 1 : prev
@@ -389,68 +258,53 @@ export default function CameraScreen() {
     }, 1200);
 
     try {
-      const url = `${API_BASE}/api/analyze`;
-
-      // IMPORTANT: uploadType MULTIPART so "parameters" becomes form fields
-      uploadTaskRef.current = FileSystem.createUploadTask(
-        url,
+      const formData = new FormData();
+      formData.append("exercise", selectedExercise);
+      formData.append("video", {
         uri,
-        {
-          httpMethod: "POST",
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-          fieldName: "video",
-          mimeType: "video/mp4",
-          parameters: {
-            exercise: exerciseLabel,
-          },
-        },
-        () => {}
-      );
+        name: "workout.mp4",
+        type: "video/mp4",
+      } as any);
 
-      const uploadRes = await uploadTaskRef.current.uploadAsync();
+      const response = await fetch(`${API_BASE}/api/analyze`, {
+        method: "POST",
+        body: formData,
+        signal: abortControllerRef.current.signal,
+      });
 
-      if (isCancelledRef.current) return;
+      clearInterval(stepIntervalRef.current!);
 
-      uploadTaskRef.current = null;
-
-      if (!uploadRes || uploadRes.status < 200 || uploadRes.status >= 300) {
-        throw new Error(`Server error ${uploadRes?.status}: ${uploadRes?.body ?? ""}`);
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Server error ${response.status}: ${text}`);
       }
 
-      // If your backend is synchronous (returns final report right away):
-      // const data = JSON.parse(uploadRes.body);
-      // navigateToSummary(data, uri);
-      //
-      // If your backend is job-based:
-      const queued = JSON.parse(uploadRes.body);
-      const jobId = queued.job_id as string | undefined;
+      const data = await response.json();
 
-      // If you are NOT using job-based yet, uncomment the synchronous path above
-      if (!jobId) {
-        // fallback: assume sync payload
-        const data = queued;
-        if (appStateRef.current !== "active") {
-          setPendingResult({ data, uri });
-          setIsProcessing(false);
-          await sendLocalNotification(
-            "Workout Analysis Ready 💪",
-            `Your ${exerciseLabel} analysis is complete. Tap to view your feedback.`
-          );
-          return;
-        }
-        navigateToSummary(data, uri);
+      // If app is in background — store result and notify
+      if (appStateRef.current !== "active") {
+        setPendingResult({ data, uri });
+        setIsProcessing(false);
+        await sendLocalNotification(
+          "Workout Analysis Ready 💪",
+          `Your ${selectedExercise} analysis is complete. Tap to view your feedback.`
+        );
         return;
       }
 
-      activeJobRef.current = jobId;
-      await pollForResult(jobId, uri, exerciseLabel);
+      // App is in foreground — navigate directly
+      setTimeout(() => navigateToSummary(data, uri), 600);
     } catch (err: any) {
-      const msg = String(err?.message ?? "");
-      if (isCancelledRef.current || msg.toLowerCase().includes("cancel")) return;
+      clearInterval(stepIntervalRef.current!);
 
-      clearStepInterval();
+      // Silently ignore user-initiated cancellation
+      if (err?.name === "AbortError") return;
+
       setIsProcessing(false);
-      Alert.alert("Analysis Failed", err?.message ?? "Could not reach the server.");
+      Alert.alert(
+        "Analysis Failed",
+        err?.message ?? "Could not reach the server."
+      );
     }
   };
 
@@ -464,6 +318,7 @@ export default function CameraScreen() {
         processingStep={processingStep}
         steps={PROCESSING_STEPS}
         onCancel={handleCancelAnalysis}
+        // Pass a tip so the user knows they can background
         backgroundTip="You can switch apps — we'll notify you when it's ready."
       />
     );
@@ -474,7 +329,13 @@ export default function CameraScreen() {
   }
 
   // ─────────────────────────────────────────────
-  // UI
+  // Pending Result Banner (if user returns before notification tap)
+  // ─────────────────────────────────────────────
+
+  // (handled by AppState listener above — navigates automatically)
+
+  // ─────────────────────────────────────────────
+  // Main Camera UI
   // ─────────────────────────────────────────────
 
   return (
@@ -485,18 +346,12 @@ export default function CameraScreen() {
           <Ionicons name="arrow-back" size={26} color={Colors.text} />
         </Pressable>
 
-        {/* Make selection intuitive: if none, show "Select exercise" */}
         <Pressable
-          style={[
-            styles.exerciseBadge,
-            !selectedExercise && { borderWidth: 1, borderColor: "#FF4444" },
-          ]}
+          style={styles.exerciseBadge}
           onPress={() => setSettingsVisible(true)}
         >
           <Ionicons name="barbell-outline" size={14} color={Colors.primary} />
-          <Text style={styles.exerciseBadgeText}>
-            {selectedExercise ?? "Select exercise"}
-          </Text>
+          <Text style={styles.exerciseBadgeText}>{selectedExercise}</Text>
           <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
         </Pressable>
 
@@ -540,7 +395,9 @@ export default function CameraScreen() {
         <View style={styles.buttonRow}>
           {/* Flip Camera */}
           <Pressable
-            onPress={() => setFacing((prev) => (prev === "back" ? "front" : "back"))}
+            onPress={() =>
+              setFacing((prev) => (prev === "back" ? "front" : "back"))
+            }
             style={styles.smallButton}
             disabled={isRecording}
           >
@@ -564,23 +421,26 @@ export default function CameraScreen() {
             />
           </Pressable>
 
-          {/* Discard Recording (MUST NOT upload) */}
+          {/* Cancel Recording */}
           {isRecording ? (
             <Pressable
               onPress={() => {
-                Alert.alert("Discard Recording", "Stop and discard this recording?", [
-                  { text: "Keep Recording", style: "cancel" },
-                  {
-                    text: "Discard",
-                    style: "destructive",
-                    onPress: () => {
-                      discardNextRecordingRef.current = true;
-                      cameraRef.current?.stopRecording();
-                      stopRecordingTimer();
-                      setIsRecording(false);
+                Alert.alert(
+                  "Discard Recording",
+                  "Stop and discard this recording?",
+                  [
+                    { text: "Keep Recording", style: "cancel" },
+                    {
+                      text: "Discard",
+                      style: "destructive",
+                      onPress: () => {
+                        cameraRef.current?.stopRecording();
+                        stopRecordingTimer();
+                        setIsRecording(false);
+                      },
                     },
-                  },
-                ]);
+                  ]
+                );
               }}
               style={styles.smallButton}
             >
@@ -596,7 +456,7 @@ export default function CameraScreen() {
       <ExerciseSelectorModal
         visible={settingsVisible}
         exercises={EXERCISES}
-        selectedExercise={selectedExercise ?? ""}
+        selectedExercise={selectedExercise}
         onSelect={(exercise: string) => {
           setSelectedExercise(exercise);
           setSettingsVisible(false);

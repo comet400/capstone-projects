@@ -1,5 +1,7 @@
-from fastapi import FastAPI, UploadFile, File, Form
-import tempfile, shutil
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, HTTPException
+import tempfile, shutil, os
+from uuid import uuid4
+from typing import Dict, Any
 
 from ptt.src.core import VideoProcessor, PoseDetector
 from ptt.src.analyzers.bench_press_analyzer import BenchPressAnalyzer
@@ -21,29 +23,66 @@ exercise_map = {
     "Deadlift": (ExerciseType.DEADLIFT, DeadliftAnalyzer()),
 }
 
-@app.post("/analyze")
-async def analyze(exercise: str = Form(...), video: UploadFile = File(...)):
+jobs: Dict[str, Dict[str, Any]] = {}
 
+def _process_job(job_id: str, exercise: str, ex_enum: ExerciseType, video_path: str):
+    try:
+        jobs[job_id]["status"] = "processing"
+
+        analyzer = exercise_map[exercise][1]
+        counter = RepCounter(ex_enum)
+        processor = VideoProcessor(detector, analyzer, counter)
+
+        analysis = processor.process_video(video_path, ex_enum)
+
+        jobs[job_id]["status"] = "done"
+        jobs[job_id]["result"] = {
+            "exercise": exercise,
+            "total_reps": analysis.total_reps,
+            "average_quality": float(analysis.average_quality),
+            "report": ReportFormatter.format_json_report(analysis),
+        }
+
+    except Exception as e:
+        jobs[job_id]["status"] = "error"
+        jobs[job_id]["error"] = str(e)
+
+    finally:
+        try:
+            os.remove(video_path)
+        except:
+            pass
+
+
+@app.post("/analyze", status_code=202)
+async def analyze(
+    background_tasks: BackgroundTasks,
+    exercise: str = Form(...),
+    video: UploadFile = File(...)
+):
     if exercise not in exercise_map:
-        return {"error": "Invalid exercise"}
+        raise HTTPException(status_code=400, detail="Invalid exercise")
 
-    ex_enum, analyzer = exercise_map[exercise]
-    counter = RepCounter(ex_enum)
-    processor = VideoProcessor(detector, analyzer, counter)
+    ex_enum, _ = exercise_map[exercise]
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
         shutil.copyfileobj(video.file, tmp)
-        path = tmp.name
+        video_path = tmp.name
 
-    analysis = processor.process_video(path, ex_enum)
-    print(f"Generated report for {exercise}:")
-    print(f"Total Reps: {analysis.total_reps}")
-    print(f"Average Quality: {analysis.average_quality:.1f}/100 (Grade: {analysis.get_quality_grade()})")
-    print(ReportFormatter.format_json_report(analysis))
-
-    return {
+    job_id = str(uuid4())
+    jobs[job_id] = {
+        "status": "queued",
         "exercise": exercise,
-        "total_reps": analysis.total_reps,
-        "average_quality": float(analysis.average_quality),
-        "report": ReportFormatter.format_json_report(analysis),
     }
+
+    background_tasks.add_task(_process_job, job_id, exercise, ex_enum, video_path)
+
+    return {"job_id": job_id, "status": "queued"}
+
+
+@app.get("/analyze/{job_id}")
+async def get_job(job_id: str):
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    return jobs[job_id]
