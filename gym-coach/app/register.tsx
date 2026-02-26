@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,301 +6,142 @@ import {
   Pressable,
   StyleSheet,
   SafeAreaView,
+  KeyboardAvoidingView,
   Platform,
-  Modal,
-  FlatList,
+  Alert,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, Link } from "expo-router";
+import axios from "axios";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RegisterScreen() {
   const router = useRouter();
 
-  const [name, setName] = useState("Jiara Martins");
-  const [email, setEmail] = useState("hello@reallygreatsite.com");
-  const [password, setPassword] = useState("******");
-  const [dob, setDob] = useState<string>("Select");
-  const [dobOpen, setDobOpen] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // quick preset DOB list (simple + looks like your mockup “Select” dropdown)
-  const dobOptions = useMemo(
-    () => [
-      "Jan 01, 2000",
-      "Mar 14, 2002",
-      "Aug 22, 2004",
-      "Dec 31, 2006",
-      "Select",
-    ],
-    []
-  );
+  const handleRegister = async () => {
+  if (!fullName || !email || !password || !confirmPassword) {
+    Alert.alert("Error", "Please fill in all fields");
+    return;
+  }
+  if (password !== confirmPassword) {
+    Alert.alert("Error", "Passwords do not match");
+    return;
+  }
 
-  const pickDob = (v: string) => {
-    setDob(v === "Select" ? "Select" : v);
-    setDobOpen(false);
-  };
+  setLoading(true);
+
+  try {
+    const response = await axios.post(
+      "http://172.20.10.4:5825/api/auth/register",
+      { full_name: fullName, email, password }
+    );
+
+    const { token, user } = response.data;
+
+    if (token && user) {
+      await AsyncStorage.setItem("token", token);
+      await AsyncStorage.setItem("user_id", user.user_id.toString());
+      await AsyncStorage.setItem("profile_completed", "false"); // initially false
+
+      router.replace("/newUser"); // redirect to newUser profile screen
+    } else {
+      Alert.alert("Error", "Registration failed");
+    }
+  } catch (err: any) {
+    console.log("Axios error response:", err.response);
+    console.log("Axios error message:", err.message);
+    const errorMsg = err.response?.data?.message || err.response?.data || err.message;
+    Alert.alert("Registration failed", errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        {/* Top pattern + back arrow */}
-        <CornerPipes position="topLeft" />
-        <CornerPipes position="topRight" />
+      <KeyboardAvoidingView
+        style={styles.safe}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={styles.container}>
+          <Text style={styles.title}>Sign Up</Text>
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          hitSlop={10}
-        >
-          <Text style={styles.backArrow}>←</Text>
-        </Pressable>
+          <Text style={styles.label}>FULL NAME</Text>
+          <TextInput
+            style={styles.input}
+            value={fullName}
+            onChangeText={setFullName}
+          />
 
-        {/* Dark rounded panel */}
-        <View style={styles.panel}>
-          <Text style={styles.title}>Create new{"\n"}Account</Text>
+          <Text style={styles.label}>EMAIL</Text>
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
 
-          <Text style={styles.sub}>
-            Already Registered?{" "}
-            <Text style={styles.subLink} onPress={() => router.replace("/login")}>
-              Log in here.
+          <Text style={styles.label}>PASSWORD</Text>
+          <TextInput
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          <Text style={styles.label}>CONFIRM PASSWORD</Text>
+          <TextInput
+            style={styles.input}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+          />
+
+          <Pressable
+            style={[styles.button, loading && { opacity: 0.6 }]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? "Creating..." : "Sign up"}
             </Text>
-          </Text>
+          </Pressable>
 
-          <View style={styles.form}>
-            <Text style={styles.label}>NAME</Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Your name"
-              placeholderTextColor="#8e8e8e"
-              autoCapitalize="words"
-              style={styles.input}
-            />
-
-            <Text style={[styles.label, styles.mt]}>EMAIL</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@email.com"
-              placeholderTextColor="#8e8e8e"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={styles.input}
-            />
-
-            <Text style={[styles.label, styles.mt]}>PASSWORD</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="******"
-              placeholderTextColor="#8e8e8e"
-              secureTextEntry
-              style={styles.input}
-            />
-
-            <Text style={[styles.label, styles.mt]}>DATE OF BIRTH</Text>
-            <Pressable
-              style={styles.select}
-              onPress={() => setDobOpen(true)}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.selectText, dob === "Select" && styles.selectMuted]}>
-                {dob}
-              </Text>
-            </Pressable>
-
-            <Pressable style={styles.cta} onPress={() => {}}>
-              <Text style={styles.ctaText}>Sign up</Text>
-            </Pressable>
+          <View style={{ marginTop: 10 }}>
+            <Link href="/login" style={{ color: "#2AA8FF", fontWeight: "700" }}>
+              Already have an account? Log in
+            </Link>
           </View>
         </View>
-
-        {/* DOB Modal (simple list) */}
-        <Modal visible={dobOpen} transparent animationType="fade" onRequestClose={() => setDobOpen(false)}>
-          <Pressable style={styles.modalOverlay} onPress={() => setDobOpen(false)}>
-            <Pressable style={styles.modalCard} onPress={() => {}}>
-              <Text style={styles.modalTitle}>Select date of birth</Text>
-              <FlatList
-                data={dobOptions.filter((x) => x !== "Select")}
-                keyExtractor={(item) => item}
-                renderItem={({ item }) => (
-                  <Pressable style={styles.modalItem} onPress={() => pickDob(item)}>
-                    <Text style={styles.modalItemText}>{item}</Text>
-                  </Pressable>
-                )}
-                ItemSeparatorComponent={() => <View style={styles.modalSep} />}
-              />
-            </Pressable>
-          </Pressable>
-        </Modal>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-/** Decorative corner pattern (same idea as Login) */
-function CornerPipes({ position }: { position: "topLeft" | "topRight" }) {
-  const isRight = position === "topRight";
-  return (
-    <View style={[styles.pipesWrap, isRight ? { right: -10 } : { left: -10 }]}>
-      <View style={[styles.pipe, pipePos(isRight, 0)]} />
-      <View style={[styles.pipe, pipePos(isRight, 1)]} />
-      <View style={[styles.pipe, pipePos(isRight, 2)]} />
-      <View style={[styles.pipe, pipePos(isRight, 3)]} />
-      <View style={[styles.pipe, pipePos(isRight, 4)]} />
-      <View style={[styles.pipe, pipePos(isRight, 5)]} />
-      <View style={[styles.pipe, pipePos(isRight, 6)]} />
-      <View style={[styles.pipe, pipePos(isRight, 7)]} />
-    </View>
-  );
-}
-
-function pipePos(isRight: boolean, i: number) {
-  const base = [
-    { top: 0, left: 6 },
-    { top: 20, left: 42 },
-    { top: 48, left: 10 },
-    { top: 64, left: 54 },
-    { top: 92, left: 22 },
-    { top: 114, left: 64 },
-    { top: 138, left: 30 },
-    { top: 160, left: 78 },
-  ];
-  const p = base[i] ?? { top: 0, left: 0 };
-  const left = isRight ? 150 - p.left : p.left;
-  return { top: p.top, left };
-}
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#fff" },
-  container: { flex: 1, backgroundColor: "#fff" },
-
-  pipesWrap: {
-    position: "absolute",
-    top: -10,
-    width: 200,
-    height: 220,
-    opacity: 0.95,
-  },
-  pipe: {
-    position: "absolute",
-    width: 48,
-    height: 24,
-    borderRadius: 14,
-    backgroundColor: "#33A8FF",
-    transform: [{ rotate: "90deg" }],
-  },
-
-  backBtn: {
-    position: "absolute",
-    top: Platform.OS === "android" ? 18 : 10,
-    left: 16,
-    zIndex: 10,
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  backArrow: { fontSize: 24, color: "#0F0F0F" },
-
-  panel: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    top: 140,
-    backgroundColor: "#161B1C",
-    borderTopLeftRadius: 44,
-    borderTopRightRadius: 44,
-    paddingHorizontal: 26,
-    paddingTop: 28,
-  },
-
-  title: {
-    fontSize: 30,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    lineHeight: 34,
-    textAlign: "center",
-  },
-
-  sub: {
-    marginTop: 10,
-    textAlign: "center",
-    color: "#9AA0A6",
-    fontSize: 12,
-  },
-  subLink: {
-    color: "#BFFF5A",
-    fontWeight: "700",
-  },
-
-  form: {
-    marginTop: 26,
-  },
-
-  label: {
-    fontSize: 11,
-    letterSpacing: 1.4,
-    color: "#2AA8FF",
-    marginBottom: 8,
-  },
-  mt: { marginTop: 14 },
-
+  safe: { flex: 1, backgroundColor: "#fff", padding: 20 },
+  container: { flex: 1, justifyContent: "center" },
+  title: { fontSize: 32, fontWeight: "700", marginBottom: 20 },
+  label: { fontSize: 14, marginTop: 10 },
   input: {
-    backgroundColor: "#5F676B",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 14,
-    color: "#fff",
+    backgroundColor: "#D7D7D7",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 4,
   },
-
-  select: {
-    backgroundColor: "#5F676B",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    justifyContent: "center",
-  },
-  selectText: { fontSize: 14, color: "#fff" },
-  selectMuted: { color: "#D3D3D3" },
-
-  cta: {
-    marginTop: 24,
-    backgroundColor: "#BFFF5A",
-    borderRadius: 14,
+  button: {
+    backgroundColor: "#171C1D",
+    borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
+    marginTop: 20,
   },
-  ctaText: {
-    color: "#0D0F10",
-    fontWeight: "800",
-    fontSize: 14,
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    padding: 24,
-  },
-  modalCard: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    paddingVertical: 14,
-    overflow: "hidden",
-  },
-  modalTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#111",
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-  },
-  modalItem: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  modalItemText: { fontSize: 14, color: "#111" },
-  modalSep: { height: 1, backgroundColor: "#eee" },
+  buttonText: { color: "#fff", fontWeight: "700" },
 });
