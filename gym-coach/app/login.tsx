@@ -31,7 +31,7 @@ export default function LoginScreen() {
 
   try {
     const response = await axios.post(
-      "http://172.20.10.4:5825/api/auth/login",
+      "http://10.0.0.138:5825/api/auth/login",
       { email, password }
     );
 

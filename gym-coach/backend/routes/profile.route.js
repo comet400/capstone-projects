@@ -42,4 +42,24 @@ router.post("/update", authMiddleware, async (req, res) => {
   }
 });
 
+// --- Get current user profile ---
+router.get("/", authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT user_id, email, full_name, fitness_level, workout_location, profile_completed
+       FROM users
+       WHERE user_id = $1`,
+      [req.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

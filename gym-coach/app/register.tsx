@@ -37,7 +37,7 @@ export default function RegisterScreen() {
 
   try {
     const response = await axios.post(
-      "http://172.20.10.4:5825/api/auth/register",
+      "http://10.0.0.138:5825/api/auth/register",
       { full_name: fullName, email, password }
     );
 

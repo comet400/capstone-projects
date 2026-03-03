@@ -1,9 +1,9 @@
 {
   "members": {
     "qm5836": {
-      "hours_balance": 69.54833333333333,
+      "hours_balance": 85.54833333333333,
       "project_start": "2026-01-22T22:22:37.128899",
-      "last_thursday": "2026-02-19",
+      "last_thursday": "2026-02-26",
       "logs": [
         {
           "timestamp": "2026-01-23T20:36:42.916919",
@@ -90,13 +90,21 @@
           "description": "Weekly 16-hour allocation added on 2026-02-19",
           "balance_after": 69.54833333333333,
           "member": "qm5836"
+        },
+        {
+          "timestamp": "2026-03-02T22:58:09.429595",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-26",
+          "balance_after": 85.54833333333333,
+          "member": "qm5836"
         }
       ]
     },
     "lv5441": {
-      "hours_balance": 76.0,
+      "hours_balance": 92.0,
       "project_start": "2026-01-22T22:23:00.479180",
-      "last_thursday": "2026-02-19",
+      "last_thursday": "2026-02-26",
       "logs": [
         {
           "timestamp": "2026-01-22T22:49:23.187678",
@@ -147,13 +155,21 @@
           "description": "Weekly 16-hour allocation added on 2026-02-19",
           "balance_after": 76.0,
           "member": "lv5441"
+        },
+        {
+          "timestamp": "2026-03-02T22:58:09.429638",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-26",
+          "balance_after": 92.0,
+          "member": "lv5441"
         }
       ]
     },
     "vn0335": {
-      "hours_balance": 80,
+      "hours_balance": 96,
       "project_start": "2026-01-22T22:48:03.117865",
-      "last_thursday": "2026-02-19",
+      "last_thursday": "2026-02-26",
       "logs": [
         {
           "timestamp": "2026-01-29T11:21:35.277620",
@@ -186,13 +202,21 @@
           "description": "Weekly 16-hour allocation added on 2026-02-19",
           "balance_after": 80,
           "member": "vn0335"
+        },
+        {
+          "timestamp": "2026-03-02T22:58:09.429667",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-26",
+          "balance_after": 96,
+          "member": "vn0335"
         }
       ]
     },
     "rw3110": {
-      "hours_balance": 49.25333333333334,
+      "hours_balance": 63.32277777777777,
       "project_start": "2026-01-23T00:51:34.183556",
-      "last_thursday": "2026-02-19",
+      "last_thursday": "2026-02-26",
       "logs": [
         {
           "timestamp": "2026-01-29T11:21:35.277622",
@@ -324,9 +348,26 @@
           "project": "",
           "balance_after": 49.25333333333334,
           "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-03-02T22:58:09.429691",
+          "type": "thursday_update",
+          "hours": 16,
+          "description": "Weekly 16-hour allocation added on 2026-02-26",
+          "balance_after": 65.25333333333333,
+          "member": "rw3110"
+        },
+        {
+          "timestamp": "2026-03-03T00:54:21.676995",
+          "type": "timer",
+          "hours": 1.9305555555555556,
+          "description": "more more more moer more more mroe rmoe meo mroe mroe",
+          "project": "",
+          "balance_after": 63.32277777777777,
+          "member": "rw3110"
         }
       ]
     }
   },
-  "last_saved": "2026-02-25T23:04:48.544065"
+  "last_saved": "2026-03-03T00:54:21.677025"
 }

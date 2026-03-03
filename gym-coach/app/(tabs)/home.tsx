@@ -7,7 +7,9 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Colors, Spacing, Typography } from "@/constants/design";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const lightColors = {
   background: "#FFFFFF",
@@ -25,17 +27,52 @@ const lightColors = {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+  const fetchUser = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) return;
+
+      const response = await axios.get(
+      "http://10.0.0.138:5825/api/profile/",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    console.log("PROFILE RESPONSE:", response.data);
+    setUser(response.data);
+    } catch (error) {
+      console.log("Failed to load profile:", error);
+    }
+  };
+
+  fetchUser();
+}, []);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header with profile icon */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Good morning, Morgan</Text>
+          <Text style={styles.greeting}>Good morning, {user?.full_name?.split(" ")[0] || "User"}</Text>
           <Text style={styles.subGreeting}>Let's crush your goals today</Text>
         </View>
         <View style={styles.profileIcon}>
-          <Text style={styles.profileInitials}>M</Text>
+          <Text style={styles.profileInitials}>
+            {user?.full_name
+              ? user.full_name
+                  .split(" ")
+                  .map((n: string) => n[0])
+                  .join("")
+                  .toUpperCase()
+              : "U"}
+        </Text>
         </View>
       </View>
 
