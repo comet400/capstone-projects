@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useRouter, Link } from "expo-router";
 import axios from "axios";
+import { API_BASE_URL } from "@/config/api";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function RegisterScreen() {
@@ -37,7 +38,7 @@ export default function RegisterScreen() {
 
   try {
     const response = await axios.post(
-      "http://10.0.0.138:5825/api/auth/register",
+      `${API_BASE_URL}/api/auth/register`,
       { full_name: fullName, email, password }
     );
 

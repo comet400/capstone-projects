@@ -5,11 +5,13 @@ import {
   Image,
   Pressable,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_BASE_URL } from "@/config/api";
 
 const lightColors = {
   background: "#FFFFFF",
@@ -25,35 +27,109 @@ const lightColors = {
   shadow: "#000000",
 };
 
+type GeneratedPlanDayExercise = {
+  exercise_id: number;
+  name: string;
+  description: string | null;
+  difficulty_level: string | null;
+  target_muscles: string | null;
+  category: string | null;
+  suitability: {
+    met_value: number | null;
+    is_high_impact: boolean | null;
+  };
+  prescription: {
+    sets: number;
+    reps: number;
+    duration_seconds: number;
+    rest_seconds: number;
+  };
+};
+
+type GeneratedPlanDay = {
+  plan_day_id: number;
+  day_number: number;
+  day_label: string;
+  exercises: GeneratedPlanDayExercise[];
+};
+
+type GeneratedPlanResponse = {
+  plan: {
+    plan_id: number;
+    name: string;
+    goal_id: number | null;
+    duration_weeks: number;
+    days_per_week: number;
+    is_ai_generated: boolean;
+    generated_at: string;
+  };
+  days: GeneratedPlanDay[];
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [todayPlan, setTodayPlan] = useState<GeneratedPlanResponse | null>(null);
+  const [isLoadingPlan, setIsLoadingPlan] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   useEffect(() => {
-  const fetchUser = async () => {
-    try {
-      const token = await AsyncStorage.getItem("token");
+    const fetchUserAndPlan = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) return;
 
-      if (!token) return;
+        // 1) Load basic profile
+        const profileRes = await axios.get(
+          `${API_BASE_URL}/api/profile/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-      const response = await axios.get(
-      "http://10.0.0.138:5825/api/profile/",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        setUser(profileRes.data);
+
+        // 2) Generate or refresh today's AI workout plan
+        setIsLoadingPlan(true);
+        setPlanError(null);
+
+        const planRes = await axios.post<GeneratedPlanResponse>(
+          `${API_BASE_URL}/api/workout-plan/generate`,
+          {
+            durationWeeks: 4,
+            daysPerWeek: 3,
+            exercisesPerDay: 6,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setTodayPlan(planRes.data);
+      } catch (error: any) {
+        console.log("Failed to load profile or plan:", error?.message ?? error);
+        setPlanError("Could not generate today's workout. Please try again.");
+      } finally {
+        setIsLoadingPlan(false);
       }
-    );
+    };
 
-    console.log("PROFILE RESPONSE:", response.data);
-    setUser(response.data);
-    } catch (error) {
-      console.log("Failed to load profile:", error);
-    }
+    fetchUserAndPlan();
+  }, []);
+
+  const todayDay: GeneratedPlanDay | null =
+    todayPlan && todayPlan.days && todayPlan.days.length > 0
+      ? todayPlan.days[0]
+      : null;
+
+  const handleStartWorkout = () => {
+    // For now, navigate to the Workouts tab, where the live workout/camera flow lives.
+    router.push("/(tabs)/workouts");
   };
-
-  fetchUser();
-}, []);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -118,27 +194,60 @@ export default function HomeScreen() {
       <View style={styles.dashboardCard}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>TODAY'S WORKOUT</Text>
-          <Text style={styles.cardLink}>Start</Text>
+          {todayDay && (
+            <Pressable onPress={handleStartWorkout}>
+              <Text style={styles.cardLink}>Start</Text>
+            </Pressable>
+          )}
         </View>
-        
-        <View style={styles.workoutRow}>
-          <Image
-            source={require("@/assets/images/home/featured.jpg")}
-            style={styles.workoutImage}
-          />
-          <View style={styles.workoutInfo}>
-            <Text style={styles.workoutName}>30 Min HIIT Cardio</Text>
-            <Text style={styles.workoutMeta}>3 exercises · 4 sets</Text>
-            <View style={styles.workoutTags}>
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>Full Body</Text>
-              </View>
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>HIIT</Text>
+
+        {isLoadingPlan && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color={lightColors.primary} />
+            <Text style={styles.loadingText}>Building your workout...</Text>
+          </View>
+        )}
+
+        {!isLoadingPlan && planError && (
+          <Text style={styles.errorText}>{planError}</Text>
+        )}
+
+        {!isLoadingPlan && todayDay && (
+          <Pressable style={styles.workoutRow} onPress={handleStartWorkout}>
+            <Image
+              source={require("@/assets/images/home/featured.jpg")}
+              style={styles.workoutImage}
+            />
+            <View style={styles.workoutInfo}>
+              <Text style={styles.workoutName}>
+                {todayPlan?.plan?.name ?? "Personalized Session"}
+              </Text>
+              <Text style={styles.workoutMeta}>
+                {todayDay.exercises.length} exercises ·{" "}
+                {todayDay.exercises.reduce(
+                  (total, ex) => total + (ex.prescription.sets || 0),
+                  0
+                )}{" "}
+                total sets
+              </Text>
+              <View style={styles.workoutTags}>
+                {todayDay.exercises.slice(0, 3).map((ex) => (
+                  <View key={ex.exercise_id} style={styles.tag}>
+                    <Text style={styles.tagText}>
+                      {ex.target_muscles || ex.category || ex.name}
+                    </Text>
+                  </View>
+                ))}
               </View>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        )}
+
+        {!isLoadingPlan && !todayDay && !planError && (
+          <Text style={styles.emptyText}>
+            No workout generated yet. Complete your profile to get started.
+          </Text>
+        )}
       </View>
 
       {/* Tomorrows's Workout */}
@@ -282,6 +391,27 @@ const styles = StyleSheet.create({
     color: lightColors.primary,
     fontSize: 12,
     fontWeight: "600",
+  },
+
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 6,
+  },
+  loadingText: {
+    color: lightColors.textSecondary,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  errorText: {
+    color: "#EF4444",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  emptyText: {
+    color: lightColors.textSecondary,
+    fontSize: 13,
   },
 
   // Progress section

@@ -14,6 +14,7 @@ import * as Notifications from "expo-notifications";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy"; // keep legacy since you use it
 import { Colors } from "@/constants/design";
+import { API_BASE_URL } from "@/config/api";
 
 import { styles } from "../components/CamComponents/CameraScreen.styles";
 import ProcessingOverlay from "../components/CamComponents/ProcessingOverlay";
@@ -24,7 +25,7 @@ import ExerciseSelectorModal from "../components/CamComponents/ExerciseSelectorM
 // Config
 // ─────────────────────────────────────────────
 
-const API_BASE = "http://10.0.0.7:5825";
+const API_BASE = API_BASE_URL;
 
 const EXERCISES = [
   "Squat",

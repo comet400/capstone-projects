@@ -13,6 +13,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Notifications from "expo-notifications";
 import * as Haptics from "expo-haptics";
 import { Colors } from "@/constants/design";
+import { API_BASE_URL } from "@/config/api";
 
 import { styles } from "./CameraScreen.styles";
 import ProcessingOverlay from "./ProcessingOverlay";
@@ -23,7 +24,7 @@ import ExerciseSelectorModal from "./ExerciseSelectorModal";
 // Config
 // ─────────────────────────────────────────────
 
-const API_BASE = "http://10.0.0.7:5825";
+const API_BASE = API_BASE_URL;
 
 const EXERCISES = [
   "Squat",

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
 
 // Define the user type based on your database schema
 interface User {
@@ -58,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       
       const response = await axios.post(
-        "http://10.0.0.138:5825/api/auth/login",
+        `${API_BASE_URL}/api/auth/login`,
         { email, password }
       );
 
