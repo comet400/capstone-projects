@@ -1,3 +1,4 @@
+import React, { useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -5,17 +6,18 @@ import {
   Image,
   Pressable,
   ScrollView,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Spacing, Typography, IconSizes } from "@/constants/design";
 
-const PROFILE_IMAGE = require("@/assets/images/home/featured.jpg");
-// Swap to require("@/assets/images/workout/rowing-form.jpg") when you add that image
+const { width } = Dimensions.get("window");
+
 const WORKOUT_VIEW_IMAGE = require("@/assets/images/home/featured.jpg");
 
-// Mock data for current workout
 const CURRENT_WORKOUT = {
   name: "30 Minute HIIT Cardio",
   exercise: "Rowing Form",
@@ -29,129 +31,247 @@ const CURRENT_WORKOUT = {
   rangeOfMotion: 90,
 };
 
+// Animated bar used inside stat cards
+function StatBar({ value, color }: { value: number; color: string }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: value / 100,
+      duration: 900,
+      delay: 500,
+      useNativeDriver: false,
+    }).start();
+  }, []);
+  return (
+    <View style={barStyles.track}>
+      <Animated.View
+        style={[
+          barStyles.fill,
+          {
+            backgroundColor: color,
+            width: anim.interpolate({
+              inputRange: [0, 1],
+              outputRange: ["0%", "100%"],
+            }),
+          },
+        ]}
+      />
+    </View>
+  );
+}
+
+const barStyles = StyleSheet.create({
+  track: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#EFEFEF",
+    overflow: "hidden",
+    marginTop: 8,
+    width: "100%",
+  },
+  fill: { height: "100%", borderRadius: 3 },
+});
+
 export default function WorkoutsScreen() {
   const router = useRouter();
+
+  const cardFade = useRef(new Animated.Value(0)).current;
+  const cardSlide = useRef(new Animated.Value(30)).current;
+  const imageFade = useRef(new Animated.Value(0)).current;
+  const statsFade = useRef(new Animated.Value(0)).current;
+  const statsSlide = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(cardFade, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.timing(cardSlide, { toValue: 0, duration: 450, useNativeDriver: true }),
+      ]),
+      Animated.timing(imageFade, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.parallel([
+        Animated.timing(statsFade, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(statsSlide, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, []);
+
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: (CURRENT_WORKOUT.currentSet / CURRENT_WORKOUT.sets) * 100,
+      duration: 900,
+      delay: 400,
+      useNativeDriver: false,
+    }).start();
+  }, []);
+
   return (
     <View style={styles.container}>
-      {/* Header: menu | mini profile | premium */}
-      <ScreenHeader subtitle="Always good to check your form" title="MORGAN MAXWELL" />
+      {/* Soft decorative blobs */}
+      <View style={styles.bgBlob1} />
+      <View style={styles.bgBlob2} />
+
+      <ScreenHeader
+        subtitle="Always good to check your form"
+        title="MORGAN MAXWELL"
+      />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Workout Info Card */}
-        <View style={styles.workoutInfoCard}>
+        {/* ── Workout Info Card ── */}
+        <Animated.View
+          style={[
+            styles.workoutInfoCard,
+            { opacity: cardFade, transform: [{ translateY: cardSlide }] },
+          ]}
+        >
           <View style={styles.workoutInfoHeader}>
-            <View>
+            <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={styles.workoutName}>{CURRENT_WORKOUT.name}</Text>
-              <Text style={styles.exerciseName}>{CURRENT_WORKOUT.exercise}</Text>
+              <View style={styles.exerciseRow}>
+                <View style={styles.exerciseDot} />
+                <Text style={styles.exerciseName}>{CURRENT_WORKOUT.exercise}</Text>
+              </View>
             </View>
             <View style={styles.timerBadge}>
-              <Ionicons name="time-outline" size={IconSizes.sm} color={Colors.secondary} />
+              <Ionicons name="time-outline" size={13} color="#2AA8FF" />
               <Text style={styles.timerText}>{CURRENT_WORKOUT.duration}</Text>
             </View>
           </View>
-          <View style={styles.progressBar}>
-            <View
+
+          {/* Segmented progress bar */}
+          <View style={styles.progressTrack}>
+            <Animated.View
               style={[
                 styles.progressFill,
-                { width: `${(CURRENT_WORKOUT.currentSet / CURRENT_WORKOUT.sets) * 100}%` },
+                {
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: ["0%", "100%"],
+                  }),
+                },
               ]}
             />
+            {[25, 50, 75].map((pct) => (
+              <View key={pct} style={[styles.progressNotch, { left: `${pct}%` as any }]} />
+            ))}
           </View>
-          <View style={styles.setInfo}>
-            <Text style={styles.setText}>
-              Set {CURRENT_WORKOUT.currentSet} of {CURRENT_WORKOUT.sets}
-            </Text>
-            <Text style={styles.repsText}>{CURRENT_WORKOUT.reps} reps</Text>
-          </View>
-        </View>
 
-        {/* Workout visualization (video/image + form overlay) */}
-        <View style={styles.workoutViewWrap}>
+          <View style={styles.setInfo}>
+            <View style={styles.setBadge}>
+              <Text style={styles.setBadgeText}>
+                Set {CURRENT_WORKOUT.currentSet} / {CURRENT_WORKOUT.sets}
+              </Text>
+            </View>
+            <Text style={styles.repsText}>
+              <Text style={styles.repsCount}>{CURRENT_WORKOUT.reps}</Text>
+              {"  reps"}
+            </Text>
+          </View>
+        </Animated.View>
+
+        {/* ── Workout View ── */}
+        <Animated.View style={[styles.workoutViewWrap, { opacity: imageFade }]}>
           <Image
             source={WORKOUT_VIEW_IMAGE}
             style={styles.workoutViewImage}
             resizeMode="cover"
           />
-          {/* Real-time metrics overlay */}
-          <View style={styles.metricsOverlay}>
-            <View style={styles.metricBadge}>
-              <Text style={styles.metricLabel}>Form Score</Text>
-              <Text style={styles.metricValue}>{CURRENT_WORKOUT.formScore}</Text>
-            </View>
-            <View style={styles.metricBadge}>
-              <Text style={styles.metricLabel}>Posture</Text>
-              <Text style={[styles.metricValue, { color: Colors.success }]}>
-                {CURRENT_WORKOUT.posture}
-              </Text>
-            </View>
-          </View>
-          {/* Form analysis overlay placeholder – skeleton/pose lines go here */}
-          <View style={styles.formOverlay} pointerEvents="none" />
-        </View>
 
-        {/* Quick Stats Cards */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Ionicons name="body-outline" size={IconSizes.lg} color={Colors.primary} />
+          <View style={styles.imageScrim} />
+
+          {/* Big form score centered at bottom */}
+          <View style={styles.formScoreOverlay}>
+            <Text style={styles.formScoreNum}>{CURRENT_WORKOUT.formScore}</Text>
+            <Text style={styles.formScoreLabel}>FORM SCORE</Text>
+          </View>
+
+          {/* Posture card top-right */}
+          <View style={styles.postureBadge}>
+            <Text style={styles.postureBadgeLabel}>POSTURE</Text>
+            <Text style={styles.postureBadgeVal}>{CURRENT_WORKOUT.posture}</Text>
+          </View>
+
+          {/* Live indicator top-left */}
+          <View style={styles.livePill}>
+            <View style={styles.liveDotInner} />
+            <Text style={styles.liveText}>LIVE</Text>
+          </View>
+        </Animated.View>
+
+        {/* ── Stat Cards ── */}
+        <Animated.View
+          style={[
+            styles.statsRow,
+            { opacity: statsFade, transform: [{ translateY: statsSlide }] },
+          ]}
+        >
+          <View style={[styles.statCard, styles.statCardBlue]}>
+            <View style={[styles.statIconWrap, { backgroundColor: "#EAF5FF" }]}>
+              <Ionicons name="body-outline" size={20} color="#2AA8FF" />
+            </View>
             <Text style={styles.statValue}>{CURRENT_WORKOUT.posture}</Text>
             <Text style={styles.statLabel}>Posture</Text>
+            <StatBar value={CURRENT_WORKOUT.posture} color="#2AA8FF" />
           </View>
+
           <View style={styles.statCard}>
-            <Ionicons name="hand-left-outline" size={IconSizes.lg} color={Colors.warning} />
+            <View style={[styles.statIconWrap, { backgroundColor: "#FFF4E5" }]}>
+              <Ionicons name="hand-left-outline" size={20} color="#F5A623" />
+            </View>
             <Text style={styles.statValue}>{CURRENT_WORKOUT.control}</Text>
             <Text style={styles.statLabel}>Control</Text>
+            <StatBar value={CURRENT_WORKOUT.control} color="#F5A623" />
           </View>
+
           <View style={styles.statCard}>
-            <Ionicons name="expand-outline" size={IconSizes.lg} color={Colors.success} />
+            <View style={[styles.statIconWrap, { backgroundColor: "#E8FAF0" }]}>
+              <Ionicons name="expand-outline" size={20} color="#27AE60" />
+            </View>
             <Text style={styles.statValue}>{CURRENT_WORKOUT.rangeOfMotion}</Text>
             <Text style={styles.statLabel}>Range</Text>
+            <StatBar value={CURRENT_WORKOUT.rangeOfMotion} color="#27AE60" />
           </View>
-        </View>
+        </Animated.View>
 
-        {/* Form Tips Card */}
-        <View style={styles.tipsCard}>
-          <View style={styles.tipsHeader}>
-            <Ionicons name="bulb-outline" size={IconSizes.md} color={Colors.secondary} />
-            <Text style={styles.tipsTitle}>Form Tip</Text>
-          </View>
-          <Text style={styles.tipsText}>
-            Keep your back straight and core engaged. Focus on smooth, controlled movements.
-          </Text>
-        </View>
-
+        {/* ── Summary Button ── */}
         <Pressable
           style={styles.summaryBtn}
           onPress={() => router.push("/workout-summary")}
         >
           <Text style={styles.summaryBtnText}>SEE WORKOUT SUMMARY</Text>
+          <View style={styles.summaryArrow}>
+            <Ionicons name="arrow-forward" size={15} color="#fff" />
+          </View>
         </Pressable>
 
-        {/* Workout navigation: Previous | Past Workouts | Next */}
+        {/* ── Navigation ── */}
         <View style={styles.navSection}>
           <View style={styles.navSide}>
-            <Text style={styles.navLabel}>PREVIOUS</Text>
             <Pressable style={styles.navCircleBtn}>
-              <Ionicons name="chevron-back" size={36} color={Colors.iconDark} />
+              <Ionicons name="chevron-back" size={24} color="#171C1D" />
             </Pressable>
+            <Text style={styles.navLabel}>PREV</Text>
           </View>
 
           <Pressable
             style={styles.pastWorkoutsBtn}
             onPress={() => router.push("/past-workouts")}
           >
-            <Ionicons name="barbell-outline" size={48} color={Colors.iconDark} />
-            <Text style={styles.pastWorkoutsText}>Past Workouts</Text>
+            <View style={styles.pastWorkoutsIconWrap}>
+              <Ionicons name="barbell-outline" size={26} color="#171C1D" />
+            </View>
+            <Text style={styles.pastWorkoutsText}>Past{"\n"}Workouts</Text>
           </Pressable>
 
           <View style={styles.navSide}>
-            <Text style={styles.navLabel}>NEXT</Text>
-            <Pressable style={styles.navCircleBtn}>
-              <Ionicons name="chevron-forward" size={36} color={Colors.iconDark} />
+            <Pressable style={[styles.navCircleBtn, styles.navCirclePrimary]}>
+              <Ionicons name="chevron-forward" size={24} color="#fff" />
             </Pressable>
+            <Text style={styles.navLabel}>NEXT</Text>
           </View>
         </View>
       </ScrollView>
@@ -162,221 +282,398 @@ export default function WorkoutsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
+
+  bgBlob1: {
+    position: "absolute",
+    top: -40,
+    right: -50,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: "#2AA8FF",
+    opacity: 0.06,
+  },
+  bgBlob2: {
+    position: "absolute",
+    bottom: 220,
+    left: -60,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "#171C1D",
+    opacity: 0.04,
   },
 
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: Spacing.screenPadding, paddingBottom: 24 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 24 },
 
+  // Info card
   workoutInfoCard: {
     marginTop: 16,
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
+    backgroundColor: "#F7F7F7",
+    borderRadius: 20,
     padding: 18,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
   },
   workoutInfoHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 16,
+    marginBottom: 18,
   },
   workoutName: {
-    color: Colors.text,
-    fontSize: Typography.sizes.xl,
-    fontWeight: "700",
-    marginBottom: 4,
+    color: "#171C1D",
+    fontSize: 17,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+    marginBottom: 6,
+  },
+  exerciseRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  exerciseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#2AA8FF",
   },
   exerciseName: {
-    color: Colors.textSecondary,
-    fontSize: Typography.sizes.md,
+    color: "#9E9E9E",
+    fontSize: 13,
+    fontWeight: "500",
   },
   timerBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.surfaceHighlight,
-    paddingHorizontal: 12,
+    gap: 5,
+    backgroundColor: "#EAF5FF",
+    paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#C8E8FF",
   },
   timerText: {
-    color: Colors.secondary,
-    fontSize: Typography.sizes.md,
+    color: "#2AA8FF",
+    fontSize: 13,
     fontWeight: "700",
   },
-  progressBar: {
-    height: 6,
-    backgroundColor: Colors.surfaceHighlight,
-    borderRadius: 3,
-    marginBottom: 12,
-    overflow: "hidden",
+
+  progressTrack: {
+    height: 8,
+    backgroundColor: "#EFEFEF",
+    borderRadius: 4,
+    marginBottom: 14,
+    overflow: "visible",
+    position: "relative",
   },
   progressFill: {
     height: "100%",
-    backgroundColor: Colors.secondary,
-    borderRadius: 3,
+    backgroundColor: "#2AA8FF",
+    borderRadius: 4,
+  },
+  progressNotch: {
+    position: "absolute",
+    top: -2,
+    width: 2,
+    height: 12,
+    backgroundColor: "#fff",
+    borderRadius: 1,
+    marginLeft: -1,
   },
   setInfo: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  setText: {
-    color: Colors.text,
-    fontSize: Typography.sizes.md,
-    fontWeight: "600",
+  setBadge: {
+    backgroundColor: "#171C1D",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  setBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
   repsText: {
-    color: Colors.textSecondary,
-    fontSize: Typography.sizes.md,
+    color: "#9E9E9E",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  repsCount: {
+    color: "#171C1D",
+    fontWeight: "900",
+    fontSize: 15,
   },
 
+  // Workout view
   workoutViewWrap: {
-    marginTop: 16,
-    borderRadius: 16,
+    marginTop: 14,
+    borderRadius: 22,
     overflow: "hidden",
-    backgroundColor: Colors.surface,
     aspectRatio: 4 / 3,
     position: "relative",
+    backgroundColor: "#F0F0F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  workoutViewImage: {
-    width: "100%",
-    height: "100%",
+  workoutViewImage: { width: "100%", height: "100%" },
+  imageScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(23,28,29,0.24)",
   },
-  metricsOverlay: {
+  formScoreOverlay: {
     position: "absolute",
-    top: 12,
-    right: 12,
-    gap: 8,
-    zIndex: 2,
-  },
-  metricBadge: {
-    backgroundColor: "rgba(30, 30, 30, 0.95)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 2,
-    borderColor: Colors.secondary,
+    bottom: 16,
+    left: 0,
+    right: 0,
     alignItems: "center",
   },
-  metricLabel: {
-    color: Colors.textSecondary,
-    fontSize: Typography.sizes.xs,
-    fontWeight: "600",
+  formScoreNum: {
+    color: "#fff",
+    fontSize: 56,
+    fontWeight: "900",
+    letterSpacing: -2,
+    lineHeight: 58,
+    textShadowColor: "rgba(0,0,0,0.35)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
+  },
+  formScoreLabel: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 3,
+    marginTop: 2,
+  },
+  postureBadge: {
+    position: "absolute",
+    top: 14,
+    right: 14,
+    backgroundColor: "rgba(255,255,255,0.93)",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+  },
+  postureBadgeLabel: {
+    color: "#ABABAB",
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 1.5,
     marginBottom: 2,
   },
-  metricValue: {
-    color: Colors.secondary,
-    fontSize: Typography.sizes.lg,
-    fontWeight: "700",
+  postureBadgeVal: {
+    color: "#27AE60",
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: -0.5,
   },
-  formOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "transparent",
+  livePill: {
+    position: "absolute",
+    top: 14,
+    left: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(23,28,29,0.55)",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  liveDotInner: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#FF3B30",
+  },
+  liveText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.5,
   },
 
+  // Stat cards
   statsRow: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
+    gap: 10,
+    marginTop: 14,
   },
   statCard: {
     flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: "#F7F7F7",
+    borderRadius: 18,
+    padding: 14,
     alignItems: "center",
-    gap: 8,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
   },
-  statValue: {
-    color: Colors.text,
-    fontSize: Typography.sizes.xl,
-    fontWeight: "700",
+  statCardBlue: {
+    borderColor: "#C8E8FF",
+    backgroundColor: "#F4FAFF",
   },
-  statLabel: {
-    color: Colors.textSecondary,
-    fontSize: Typography.sizes.xs,
-  },
-
-  tipsCard: {
-    marginTop: 16,
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.secondary,
-  },
-  tipsHeader: {
-    flexDirection: "row",
+  statIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
     marginBottom: 8,
   },
-  tipsTitle: {
-    color: Colors.secondary,
-    fontSize: Typography.sizes.md,
-    fontWeight: "700",
+  statValue: {
+    color: "#171C1D",
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: -0.5,
   },
-  tipsText: {
-    color: Colors.text,
-    fontSize: Typography.sizes.md,
-    lineHeight: 20,
+  statLabel: {
+    color: "#ABABAB",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    marginTop: 2,
   },
 
+  // Tips
+  tipsCard: {
+    marginTop: 14,
+    backgroundColor: "#F7F7F7",
+    borderRadius: 18,
+    padding: 16,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+  },
+  tipIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#EAF5FF",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 2,
+  },
+  tipsTitle: {
+    color: "#2AA8FF",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    marginBottom: 5,
+  },
+  tipsText: {
+    color: "#555",
+    fontSize: 13,
+    lineHeight: 19,
+  },
+
+  // Summary button
   summaryBtn: {
     marginTop: 16,
-    backgroundColor: Colors.secondary,
-    borderRadius: 14,
+    backgroundColor: "#171C1D",
+    borderRadius: 16,
     paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    shadowColor: "#171C1D",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  summaryBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  summaryArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#2AA8FF",
     alignItems: "center",
     justifyContent: "center",
   },
-  summaryBtnText: {
-    color: Colors.iconDark,
-    fontSize: Typography.sizes.md,
-    fontWeight: "800",
-  },
 
+  // Nav
   navSection: {
     marginTop: 28,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 4,
   },
   navSide: {
     alignItems: "center",
     gap: 8,
   },
   navLabel: {
-    color: Colors.textSecondary,
-    fontSize: Typography.sizes.xs,
-    fontWeight: "700",
+    color: "#ABABAB",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 2,
   },
   navCircleBtn: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: Colors.secondary,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#F0F0F0",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+  },
+  navCirclePrimary: {
+    backgroundColor: "#2AA8FF",
+    borderColor: "#2AA8FF",
   },
   pastWorkoutsBtn: {
-    width: 120,
-    paddingVertical: 20,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: "#F7F7F7",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+    minWidth: 110,
+  },
+  pastWorkoutsIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#EAF5FF",
+    alignItems: "center",
+    justifyContent: "center",
   },
   pastWorkoutsText: {
-    color: Colors.iconDark,
-    fontSize: Typography.sizes.sm,
+    color: "#171C1D",
+    fontSize: 12,
     fontWeight: "700",
     textAlign: "center",
+    lineHeight: 16,
   },
 
   bottomPad: { height: 100 },
