@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { API_BASE_URL } from '@/config/api';
+import { API_BASE_URL } from "@/app/config/api";
 
 // Define the user type based on your database schema
 interface User {

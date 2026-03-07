@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import axios from "axios";
-import { API_BASE_URL } from "@/config/api";
+import { API_BASE_URL } from "@/app/config/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {

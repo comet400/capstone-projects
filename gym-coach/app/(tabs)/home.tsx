@@ -11,7 +11,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_BASE_URL } from "@/config/api";
+import { API_BASE_URL } from "@/app/config/api";
 
 const lightColors = {
   background: "#FFFFFF",

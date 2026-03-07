@@ -13,7 +13,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Notifications from "expo-notifications";
 import * as Haptics from "expo-haptics";
 import { Colors } from "@/constants/design";
-import { API_BASE_URL } from "@/config/api";
+import { API_BASE_URL } from "@/app/config/api";
 
 import { styles } from "./CameraScreen.styles";
 import ProcessingOverlay from "./ProcessingOverlay";
