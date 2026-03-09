@@ -194,7 +194,7 @@ export default function NewUserScreen() {
     try {
       const token = await AsyncStorage.getItem("token");
       await axios.post(
-        `${API_BASE_URL}`,
+        `${API_BASE_URL}/api/profile/update`,
         {
           date_of_birth: dateOfBirth.toISOString().split("T")[0],
           height_cm: parseInt(height),
