@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
 
   // Date picker card
   pickerCard: {
-    backgroundColor: "#F7F7F7",
+    backgroundColor: "#131212",
     borderRadius: 18,
     padding: 16,
     marginBottom: 18,
