@@ -51,7 +51,7 @@ router.post("/register", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error(err);
+    //console.error(err);
     res.status(500).json({ message: err.message });
   }
 });
@@ -61,8 +61,8 @@ router.post("/login", async (req, res) => {
   try {
     let { email, password } = req.body;
 
-    // DEBUG: log incoming request
-    console.log("Login attempt:", { email, password });
+    //  log incoming request
+    //console.log("Login attempt:", { email, password });
 
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password required" });
@@ -75,7 +75,7 @@ router.post("/login", async (req, res) => {
     const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
 
     // DEBUG: log query result
-    console.log("Database query result:", result.rows);
+    //console.log("Database query result:", result.rows);
 
     if (result.rows.length === 0) {
       return res.status(400).json({ message: "Invalid credentials" });
@@ -83,13 +83,13 @@ router.post("/login", async (req, res) => {
 
     const user = result.rows[0];
 
-    // DEBUG: show hashed password from DB
-    console.log("Hashed password from DB:", user.password_hash);
+    // : show hashed password from DB
+    //console.log("Hashed password from DB:", user.password_hash);
 
     const match = await bcrypt.compare(password, user.password_hash);
 
-    // DEBUG: show match result
-    console.log("Password match result:", match);
+    // : show match result
+    //console.log("Password match result:", match);
 
     if (!match) return res.status(400).json({ message: "Invalid credentials" });
 
@@ -106,7 +106,7 @@ router.post("/login", async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Login error:", err);
+    //console.error("Login error:", err);
     res.status(500).json({ error: err.message });
   }
 });
