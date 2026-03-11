@@ -111,11 +111,6 @@ export default function WorkoutsScreen() {
       <View style={styles.bgBlob1} />
       <View style={styles.bgBlob2} />
 
-      <ScreenHeader
-        subtitle="Always good to check your form"
-        title="MORGAN MAXWELL"
-      />
-
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -193,12 +188,6 @@ export default function WorkoutsScreen() {
           <View style={styles.postureBadge}>
             <Text style={styles.postureBadgeLabel}>POSTURE</Text>
             <Text style={styles.postureBadgeVal}>{CURRENT_WORKOUT.posture}</Text>
-          </View>
-
-          {/* Live indicator top-left */}
-          <View style={styles.livePill}>
-            <View style={styles.liveDotInner} />
-            <Text style={styles.liveText}>LIVE</Text>
           </View>
         </Animated.View>
 

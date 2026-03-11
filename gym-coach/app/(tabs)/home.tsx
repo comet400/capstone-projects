@@ -72,54 +72,74 @@ export default function HomeScreen() {
   const [todayPlan, setTodayPlan] = useState<GeneratedPlanResponse | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+  const [recentActivity, setRecentActivity] = useState<any | null>(null);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [overview, setOverview] = useState<{
+  weeklyProgress: number;
+  totalMinutes: number;
+  totalCalories: number;
+  workoutsCompleted: number;
+  streak: number;
+  } | null>(null);
+  const [loadingOverview, setLoadingOverview] = useState(false);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUserAndPlan = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token");
-        if (!token) return;
+  const fetchOverview = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
 
-        // 1) Load basic profile
-        const profileRes = await axios.get(
-          `${API_BASE_URL}/api/profile/`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+      setLoadingOverview(true);
+      setOverviewError(null);
 
-        setUser(profileRes.data);
+      const res = await axios.get(`${API_BASE_URL}/api/dashboard/overview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        // 2) Generate or refresh today's AI workout plan
-        setIsLoadingPlan(true);
-        setPlanError(null);
+      setOverview(res.data);
+    } catch (error: any) {
+      console.log("Failed to fetch overview:", error?.message ?? error);
+      setOverviewError("Failed to load overview");
+    } finally {
+      setLoadingOverview(false);
+    }
+  };
 
-        const planRes = await axios.post<GeneratedPlanResponse>(
-          `${API_BASE_URL}/api/workout-plan/generate`,
-          {
-            durationWeeks: 4,
-            daysPerWeek: 3,
-            exercisesPerDay: 6,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+  const fetchUserAndPlan = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
 
-        setTodayPlan(planRes.data);
-      } catch (error: any) {
-        console.log("Failed to load profile or plan:", error?.message ?? error);
-        setPlanError("Could not generate today's workout. Please try again.");
-      } finally {
-        setIsLoadingPlan(false);
-      }
-    };
+      // Load basic profile
+      const profileRes = await axios.get(`${API_BASE_URL}/api/profile/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUser(profileRes.data);
 
-    fetchUserAndPlan();
-  }, []);
+      // Generate today's workout plan
+      setIsLoadingPlan(true);
+      setPlanError(null);
+
+      const planRes = await axios.post<GeneratedPlanResponse>(
+        `${API_BASE_URL}/api/workout-plan/generate`,
+        { durationWeeks: 4, daysPerWeek: 3, exercisesPerDay: 6 },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setTodayPlan(planRes.data);
+    } catch (error: any) {
+      console.log("Failed to load profile or plan:", error?.message ?? error);
+      setPlanError("Could not generate today's workout. Please try again.");
+    } finally {
+      setIsLoadingPlan(false);
+    }
+  };
+
+  // Call both functions
+  fetchOverview();
+  fetchUserAndPlan();
+}, []);
 
   const todayDay: GeneratedPlanDay | null =
     todayPlan && todayPlan.days && todayPlan.days.length > 0
@@ -163,29 +183,45 @@ export default function HomeScreen() {
           <View style={styles.progressRingContainer}>
             <View style={styles.progressRing}>
               <View style={styles.progressInner}>
-                <Text style={styles.progressNumber}>70%</Text>
+                <Text style={styles.progressNumber}>
+                  {overview ? `${overview.weeklyProgress}%` : "0%"} </Text>
               </View>
             </View>
             <Text style={styles.progressLabel}>weekly Progress</Text>
           </View>
 
           <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>458</Text>
-              <Text style={styles.statLabel}>mins</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>2.3k</Text>
-              <Text style={styles.statLabel}>kcal</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>12</Text>
-              <Text style={styles.statLabel}>workouts</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>4</Text>
-              <Text style={styles.statLabel}>streak</Text>
-            </View>
+            {loadingOverview ? (
+              <ActivityIndicator size="small" color={lightColors.primary} />
+            ) : overviewError ? (
+              <Text style={styles.errorText}>{overviewError}</Text>
+            ) : overview ? (
+              <>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{overview.totalMinutes}</Text>
+                  <Text style={styles.statLabel}>mins</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{overview.totalCalories}</Text>
+                  <Text style={styles.statLabel}>kcal</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{overview.workoutsCompleted}</Text>
+                  <Text style={styles.statLabel}>workouts</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{overview.streak}</Text>
+                  <Text style={styles.statLabel}>streak</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.statBox}><Text style={styles.statValue}>0</Text><Text style={styles.statLabel}>mins</Text></View>
+                <View style={styles.statBox}><Text style={styles.statValue}>0</Text><Text style={styles.statLabel}>kcal</Text></View>
+                <View style={styles.statBox}><Text style={styles.statValue}>0</Text><Text style={styles.statLabel}>workouts</Text></View>
+                <View style={styles.statBox}><Text style={styles.statValue}>0</Text><Text style={styles.statLabel}>streak</Text></View>
+              </>
+            )}
           </View>
         </View>
       </View>
@@ -250,6 +286,35 @@ export default function HomeScreen() {
         )}
       </View>
 
+      {/* Recent Activity Preview */}
+      <View style={styles.dashboardCard}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>RECENT ACTIVITY</Text>
+
+          <Pressable onPress={() => router.push("/(tabs)/activities")}>
+            <Text style={styles.cardLink}>View All</Text>
+          </Pressable>
+        </View>
+
+        <Pressable
+          style={styles.activityPreview}
+          onPress={() => router.push("/(tabs)/activities")}
+        >
+          <View style={styles.activityPreviewContent}>
+            <Text style={styles.activityPreviewTitle}>
+              Upper Body Strength
+            </Text>
+
+            <Text style={styles.activityPreviewMeta}>
+              45 min · 320 kcal · Today
+            </Text>
+          </View>
+
+          <Text style={styles.activityArrow}>→</Text>
+        </Pressable>
+      </View>
+      
+
       {/* Tomorrows's Workout */}
       <View style={styles.dashboardCard}>
         <View style={styles.cardHeader}>
@@ -277,7 +342,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Dashboard Card 4: Recommended */}
+      
       <View style={styles.dashboardCard}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>RECOMMENDED FOR YOU</Text>
@@ -304,19 +369,6 @@ export default function HomeScreen() {
           </View>
         </View>
       </View>
-
-      {/* Dashboard Card 5: Upgrade (special styling) */}
-      <Pressable style={styles.upgradeCard} onPress={() => router.push("/paid-plan-tab")}>
-        <View style={styles.upgradeContent}>
-          <View>
-            <Text style={styles.upgradeTitle}>Unlock Premium</Text>
-            <Text style={styles.upgradeDescription}>Get access to all programs and features</Text>
-          </View>
-          <View style={styles.upgradeBadge}>
-            <Text style={styles.upgradeBadgeText}>→</Text>
-          </View>
-        </View>
-      </Pressable>
 
       <View style={{ height: 40 }} />
     </ScrollView>
@@ -605,4 +657,36 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "300",
   },
+
+  activityPreview: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  backgroundColor: lightColors.surface,
+  borderRadius: 14,
+  padding: 14,
+},
+
+activityPreviewContent: {
+  flex: 1,
+},
+
+activityPreviewTitle: {
+  color: lightColors.text,
+  fontSize: 14,
+  fontWeight: "600",
+  marginBottom: 2,
+},
+
+activityPreviewMeta: {
+  color: lightColors.textSecondary,
+  fontSize: 12,
+},
+
+activityArrow: {
+  color: lightColors.primary,
+  fontSize: 18,
+  fontWeight: "600",
+},
 });
+
