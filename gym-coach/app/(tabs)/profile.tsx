@@ -1,3 +1,4 @@
+import React, { useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -5,139 +6,420 @@ import {
   Image,
   Pressable,
   ScrollView,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Colors, Spacing, Typography, IconSizes } from "@/constants/design";
 
+const { width } = Dimensions.get("window");
+
 const PROFILE_IMAGE = require("@/assets/images/home/featured.jpg");
 
+// ── Animated grid card ──────────────────────────────────────────
+function GridCard({
+  icon,
+  label,
+  onPress,
+  delay,
+  accent,
+}: {
+  icon: string;
+  label: string;
+  onPress: () => void;
+  delay: number;
+  accent?: boolean;
+}) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 400, delay, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  const onPressIn = () =>
+    Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true, speed: 50 }).start();
+  const onPressOut = () =>
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
+
+  return (
+    <Animated.View
+      style={[
+        gridStyles.wrap,
+        { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] },
+      ]}
+    >
+      <Pressable
+        style={[gridStyles.card, accent && gridStyles.cardAccent]}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+      >
+        <View style={[gridStyles.iconCircle, accent && gridStyles.iconCircleAccent]}>
+          <Ionicons name={icon as any} size={26} color={accent ? "#FFFFFF" : "#2AA8FF"} />
+        </View>
+        <Text style={[gridStyles.label, accent && gridStyles.labelAccent]}>{label}</Text>
+        <View style={[gridStyles.arrow, accent && gridStyles.arrowAccent]}>
+          <Ionicons name="arrow-forward" size={12} color={accent ? "#2AA8FF" : "#ABABAB"} />
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const gridStyles = StyleSheet.create({
+  wrap: { width: "47%" },
+  card: {
+    aspectRatio: 1,
+    borderRadius: 20,
+    backgroundColor: "#F7F7F7",
+    padding: 16,
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+  },
+  cardAccent: {
+    backgroundColor: "#171C1D",
+    borderColor: "#171C1D",
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: "#EAF5FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconCircleAccent: {
+    backgroundColor: "rgba(42,168,255,0.18)",
+  },
+  label: {
+    color: "#171C1D",
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    marginTop: 8,
+  },
+  labelAccent: { color: "#FFFFFF" },
+  arrow: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#EFEFEF",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-end",
+  },
+  arrowAccent: { backgroundColor: "rgba(42,168,255,0.18)" },
+});
+
+// ── Reco card ───────────────────────────────────────────────────
+function RecoCard({ source, label }: { source: any; label: string }) {
+  return (
+    <View style={recoStyles.wrap}>
+      <Image source={source} style={recoStyles.image} resizeMode="cover" />
+      <View style={recoStyles.scrim} />
+      <Text style={recoStyles.label}>{label}</Text>
+    </View>
+  );
+}
+
+const recoStyles = StyleSheet.create({
+  wrap: {
+    width: 160,
+    height: 120,
+    borderRadius: 18,
+    overflow: "hidden",
+    marginRight: 12,
+    position: "relative",
+  },
+  image: { width: "100%", height: "100%" },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(23,28,29,0.28)",
+  },
+  label: {
+    position: "absolute",
+    bottom: 10,
+    left: 12,
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+});
+
+// ── Main Screen ─────────────────────────────────────────────────
 export default function ProfileScreen() {
   const router = useRouter();
 
+  const headerFade = useRef(new Animated.Value(0)).current;
+  const headerSlide = useRef(new Animated.Value(-20)).current;
+  const avatarScale = useRef(new Animated.Value(0.85)).current;
+  const avatarFade = useRef(new Animated.Value(0)).current;
+  const sectionFade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(headerFade, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(headerSlide, { toValue: 0, duration: 500, useNativeDriver: true }),
+      ]),
+      Animated.parallel([
+        Animated.spring(avatarScale, { toValue: 1, useNativeDriver: true, damping: 14, stiffness: 120 }),
+        Animated.timing(avatarFade, { toValue: 1, duration: 350, useNativeDriver: true }),
+      ]),
+      Animated.timing(sectionFade, { toValue: 1, duration: 400, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header: menu | mini profile | premium */}
-      <ScreenHeader subtitle="Thats you!" title="MORGAN MAXWELL!" />
+    <View style={styles.root}>
+      {/* Bg blobs */}
+      <View style={styles.bgBlob1} />
+      <View style={styles.bgBlob2} />
 
-      {/* Large profile picture */}
-      <View style={styles.avatarWrap}>
-        <Image source={PROFILE_IMAGE} style={styles.mainAvatar} />
-      </View>
-
-      {/* Action buttons grid 2x2 */}
-      <View style={styles.grid}>
-        <Pressable
-          style={[styles.gridBtn, styles.gridBtnBlue]}
-          onPress={() => router.push("/past-workouts")}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+          
+        {/* Avatar */}
+        <Animated.View
+          style={[styles.avatarWrap, { opacity: avatarFade, paddingTop: 20, transform: [{ scale: avatarScale }] }]}
         >
-          <Ionicons name="barbell-outline" size={IconSizes.xl * 2} color={Colors.iconDark} />
-          <Text style={styles.gridBtnText}>Past Workouts</Text>
-        </Pressable>
-        <Pressable style={[styles.gridBtn, styles.gridBtnBlue]} 
-          onPress={() => router.push("/settings")}>
-          <Ionicons name="settings-outline" size={IconSizes.xl * 2} color={Colors.iconDark} />
-          <Text style={styles.gridBtnText}>Settings</Text>
-        </Pressable>
-        <Pressable style={[styles.gridBtn, styles.gridBtnLime]} 
-          onPress={() => router.push("/progress")}>
-          <Ionicons name="bar-chart-outline" size={IconSizes.xl * 2} color={Colors.iconDark} />
-          <Text style={styles.gridBtnText}>Progress</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.gridBtn, styles.gridBtnLime]}
-          onPress={() => router.push("/highlights")}
-        >
-          <Ionicons name="sparkles-outline" size={IconSizes.xl * 2} color={Colors.iconDark} />
-          <Text style={styles.gridBtnText}>Highlights</Text>
-        </Pressable>
-      </View>
+          <View style={styles.avatarRing}>
+            <Image source={PROFILE_IMAGE} style={styles.mainAvatar} resizeMode="cover" />
+          </View>
+          {/* Edit badge */}
+          <Pressable style={styles.editBadge}>
+            <Ionicons name="pencil" size={14} color="#FFFFFF" />
+          </Pressable>
+        </Animated.View>
 
-      {/* Recommended for you */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recommended for you</Text>
-        <Text style={styles.viewAll}>View All</Text>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <Image
-          source={require("@/assets/images/home/reco1.jpg")}
-          style={styles.recoCard}
-        />
-        <Image
-          source={require("@/assets/images/home/reco2.jpg")}
-          style={styles.recoCard}
-        />
+        {/* Stats strip */}
+        <Animated.View style={[styles.statsStrip, { opacity: sectionFade }]}>
+          {[
+            { val: "48", label: "Workouts" },
+            { val: "12", label: "Streak" },
+            { val: "94", label: "Form Score" },
+          ].map((s, i) => (
+            <React.Fragment key={s.label}>
+              <View style={styles.statItem}>
+                <Text style={styles.statVal}>{s.val}</Text>
+                <Text style={styles.statLabel}>{s.label}</Text>
+              </View>
+              {i < 2 && <View style={styles.statDivider} />}
+            </React.Fragment>
+          ))}
+        </Animated.View>
+
+        {/* Grid */}
+        <View style={styles.grid}>
+          <GridCard
+            icon="barbell-outline"
+            label="Past Workouts"
+            onPress={() => router.push("/past-workouts")}
+            delay={100}
+            accent
+          />
+          <GridCard
+            icon="bar-chart-outline"
+            label="Progress"
+            onPress={() => router.push("/progress")}
+            delay={180}
+          />
+          <GridCard
+            icon="sparkles-outline"
+            label="Highlights"
+            onPress={() => router.push("/highlights")}
+            delay={260}
+          />
+          <GridCard
+            icon="settings-outline"
+            label="Settings"
+            onPress={() => router.push("/settings")}
+            delay={340}
+          />
+        </View>
+
+        {/* Recommended */}
+        <Animated.View style={[{ opacity: sectionFade }]}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recommended for you</Text>
+            <Pressable style={styles.viewAllBtn}>
+              <Text style={styles.viewAllText}>View All</Text>
+              <Ionicons name="arrow-forward" size={12} color="#2AA8FF" />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingRight: 4 }}
+          >
+            <RecoCard source={require("@/assets/images/home/reco1.jpg")} label="HIIT Cardio" />
+            <RecoCard source={require("@/assets/images/home/reco2.jpg")} label="Strength Builder" />
+            <RecoCard source={require("@/assets/images/home/featured.jpg")} label="Core Blast" />
+          </ScrollView>
+        </Animated.View>
+
+        <View style={{ height: 120 }} />
       </ScrollView>
-
-      <View style={{ height: 120 }} />
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-    paddingHorizontal: Spacing.screenPadding,
+  root: { flex: 1, backgroundColor: "#FFFFFF" },
+
+  bgBlob1: {
+    position: "absolute",
+    top: -40, right: -50,
+    width: 200, height: 200, borderRadius: 100,
+    backgroundColor: "#2AA8FF", opacity: 0.06,
+  },
+  bgBlob2: {
+    position: "absolute",
+    bottom: 200, left: -70,
+    width: 240, height: 240, borderRadius: 120,
+    backgroundColor: "#171C1D", opacity: 0.04,
   },
 
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20 },
+
+  // Header
+  headerBlock: { marginTop: 24, marginBottom: 28 },
+  tagRow: { flexDirection: "row", marginBottom: 14 },
+  tagPill: {
+    backgroundColor: "#171C1D", borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 5,
+  },
+  tagText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
+  nameTitle: {
+    fontSize: 44, fontWeight: "900", color: "#171C1D",
+    lineHeight: 48, letterSpacing: -1.5,
+  },
+  accentLine: {
+    marginTop: 14, width: 48, height: 4,
+    borderRadius: 2, backgroundColor: "#2AA8FF",
+  },
+
+  // Avatar
   avatarWrap: {
     alignItems: "center",
-    marginTop: Spacing.xl,
+    marginBottom: 24,
+    position: "relative",
+  },
+  avatarRing: {
+    width: 148,
+    height: 148,
+    borderRadius: 74,
+    borderWidth: 3,
+    borderColor: "#2AA8FF",
+    padding: 3,
+    shadowColor: "#2AA8FF",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
   },
   mainAvatar: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: "100%",
+    height: "100%",
+    borderRadius: 70,
+  },
+  editBadge: {
+    position: "absolute",
+    bottom: 32,
+    right: width / 2 - 82,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#171C1D",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  levelPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#EAF5FF",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: "#C8E8FF",
+  },
+  levelDot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: "#2AA8FF",
+  },
+  levelText: {
+    color: "#2AA8FF", fontSize: 11,
+    fontWeight: "800", letterSpacing: 1.5,
   },
 
+  // Stats strip
+  statsStrip: {
+    flexDirection: "row",
+    backgroundColor: "#F7F7F7",
+    borderRadius: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
+  },
+  statItem: { flex: 1, alignItems: "center" },
+  statVal: {
+    fontSize: 24, fontWeight: "900",
+    color: "#171C1D", letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 10, fontWeight: "700",
+    color: "#ABABAB", letterSpacing: 0.5,
+    marginTop: 3,
+  },
+  statDivider: {
+    width: 1, backgroundColor: "#E8E8E8",
+    marginVertical: 4,
+  },
+
+  // Grid
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginTop: Spacing.xl,
-    gap: Spacing.md,
-  },
-  gridBtn: {
-    width: "47%",
-    aspectRatio: 1,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-  },
-  gridBtnBlue: {
-    backgroundColor: Colors.primary,
-  },
-  gridBtnLime: {
-    backgroundColor: Colors.secondary,
-  },
-  gridBtnText: {
-    color: Colors.iconDark,
-    fontSize: Typography.sizes.md,
-    fontWeight: Typography.weights.bold,
+    gap: 12,
+    marginBottom: 28,
   },
 
+  // Section header
   sectionHeader: {
-    marginTop: 26,
-    marginBottom: 10,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 14,
   },
   sectionTitle: {
-    color: Colors.text,
-    fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.bold,
+    color: "#171C1D", fontSize: 17,
+    fontWeight: "800", letterSpacing: -0.3,
   },
-  viewAll: {
-    color: Colors.textSecondary,
-    fontSize: Typography.sizes.sm,
+  viewAllBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
   },
-  recoCard: {
-    width: 160,
-    height: 110,
-    borderRadius: 16,
-    marginRight: 12,
+  viewAllText: {
+    color: "#2AA8FF", fontSize: 12, fontWeight: "700",
   },
 });

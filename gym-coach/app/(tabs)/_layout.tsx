@@ -15,19 +15,19 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textSecondary,
+        tabBarActiveTintColor: "#171C1D",
+        tabBarInactiveTintColor: "#ABABAB",
         tabBarLabelStyle: {
-          fontSize: Typography.sizes.xs,
+          fontSize: 10,
           marginTop: -2,
           marginBottom: 6,
-          fontWeight: Typography.weights.semibold,
+          fontWeight: "700",
+          letterSpacing: 0.3,
         },
         tabBarStyle: [
           styles.tabBar,
           {
             bottom: 14 + insets.bottom,
-            paddingBottom: 8,
             height: 74,
           },
         ],
@@ -67,7 +67,6 @@ export default function TabsLayout() {
         options={{
           title: "",
           tabBarLabel: () => null,
-          // Collapse the tab item entirely when on the camera screen
           tabBarItemStyle: isCamera ? styles.cameraItemHidden : styles.cameraItem,
           tabBarIcon: ({ focused }) =>
             isCamera ? null : <CameraTabIcon focused={focused} />,
@@ -106,10 +105,11 @@ export default function TabsLayout() {
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   return (
     <View style={styles.iconContainer}>
+      {focused && <View style={styles.iconPill} />}
       <Ionicons
         name={name as any}
-        size={IconSizes.lg}
-        color={focused ? Colors.primary : Colors.textSecondary}
+        size={22}
+        color={focused ? "#171C1D" : "#ABABAB"}
       />
     </View>
   );
@@ -119,16 +119,11 @@ function CameraTabIcon({ focused }: { focused: boolean }) {
   return (
     <View style={styles.cameraWrap}>
       <View style={[styles.cameraRing, focused && styles.cameraRingActive]}>
-        <View
-          style={[
-            styles.cameraInner,
-            focused && { backgroundColor: Colors.secondary },
-          ]}
-        >
+        <View style={[styles.cameraInner, focused && styles.cameraInnerActive]}>
           <Ionicons
             name="camera"
-            size={IconSizes.lg}
-            color={focused ? Colors.iconDark : Colors.textSecondary}
+            size={22}
+            color={focused ? "#000000" : "#ffffff"}
           />
         </View>
       </View>
@@ -141,36 +136,52 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 14,
     right: 14,
-    bottom: 14,
     height: 74,
-    borderRadius: 18,
-    backgroundColor: "#2A2A2A",
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 0,
     paddingBottom: 8,
     paddingTop: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
+    shadowColor: "#171C1D",
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+    // Subtle border to separate from white screen bg
+    borderWidth: 1,
+    borderColor: "#EFEFEF",
   },
+
   iconContainer: {
     alignItems: "center",
     justifyContent: "center",
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
+    position: "relative",
   },
-  // Normal camera tab item — wide enough for the floating button
+
+  // Blue dot indicator above focused icon
+  iconPill: {
+    position: "absolute",
+    top: -2,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#2AA8FF",
+  },
+
+  // Camera tab sizing
   cameraItem: {
     width: 78,
     overflow: "visible",
   },
-  // Collapsed when on camera screen — zero width, no interaction
   cameraItemHidden: {
     width: 0,
     overflow: "hidden",
     opacity: 0,
   },
+
+  // Camera FAB
   cameraWrap: {
     width: 78,
     height: 78,
@@ -182,26 +193,32 @@ const styles = StyleSheet.create({
     width: 66,
     height: 66,
     borderRadius: 33,
-    backgroundColor: "#BFFF5A",
+    backgroundColor: "#F4F4F4",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#BFFF5A",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    borderWidth: 3,
+    borderColor: "#adadad",
+    shadowColor: "#171C1D",
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },
   cameraRingActive: {
-    backgroundColor: "#BFFF5A",
-    shadowOpacity: 0.5,
+    borderColor: "#2AA8FF",
+    shadowColor: "#2AA8FF",
+    shadowOpacity: 0.25,
     transform: [{ scale: 1.05 }],
   },
   cameraInner: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: "#151515",
+    backgroundColor: "#171C1D",
     alignItems: "center",
     justifyContent: "center",
+  },
+  cameraInnerActive: {
+    backgroundColor: "#2AA8FF",
   },
 });
