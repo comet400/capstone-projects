@@ -7,6 +7,7 @@ from ..detectors.base_detector import BaseDetector
 from ..counters.base_counter import BaseCounter
 from ..analyzers.form_checker import FormChecker
 from ..utils.models import ExerciseAnalysis, ExerciseType, FormMetrics
+from ..utils.skeleton_drawer import annotate_frame_to_base64
 from ...config.thresholds import COMMON_ISSUE_THRESHOLD
 
 
@@ -14,14 +15,6 @@ class VideoProcessor:
     """Processes exercise videos frame by frame"""
     
     def __init__(self, detector: BaseDetector, analyzer: FormChecker, counter: BaseCounter):
-        """
-        Initialize video processor
-        
-        Args:
-            detector: Pose detector instance
-            analyzer: Form analyzer instance
-            counter: Rep counter instance
-        """
         self.detector = detector
         self.analyzer = analyzer
         self.counter = counter
@@ -51,6 +44,12 @@ class VideoProcessor:
         
         frame_num = 0
         
+        # Track the frame with the most issues for skeleton annotation
+        worst_frame_num = -1
+        worst_issue_count = -1
+        worst_metrics = None
+        worst_keypoints = None
+        
         while True:
             ret, frame = cap.read()
             if not ret:
@@ -67,6 +66,14 @@ class VideoProcessor:
                 
                 # Count reps
                 self.counter.process_frame(frame_num, metrics)
+                
+                # Track worst-form frame (most issues)
+                issue_count = len(metrics.issues)
+                if issue_count > worst_issue_count:
+                    worst_issue_count = issue_count
+                    worst_frame_num = frame_num
+                    worst_metrics = metrics
+                    worst_keypoints = keypoints.copy()
             
             # Progress callback
             if progress_callback and frame_num % 30 == 0:
@@ -82,6 +89,30 @@ class VideoProcessor:
         if reps_data:
             avg_quality = sum(rep.quality_score for rep in reps_data) / len(reps_data)
         
+        # Generate annotated skeleton frame
+        annotated_frame_b64 = None
+        if worst_frame_num > 0 and worst_keypoints is not None:
+            try:
+                # Re-read the worst frame from the video
+                cap2 = cv2.VideoCapture(video_path)
+                cap2.set(cv2.CAP_PROP_POS_FRAMES, worst_frame_num - 1)
+                ret, worst_frame = cap2.read()
+                cap2.release()
+                
+                if ret and worst_frame is not None:
+                    # Use overall issues if worst_metrics has no issues
+                    # (fallback for better coloring)
+                    display_metrics = worst_metrics
+                    if display_metrics and not display_metrics.issues and overall_issues:
+                        display_metrics = FormMetrics()
+                        display_metrics.issues = overall_issues
+                    
+                    annotated_frame_b64 = annotate_frame_to_base64(
+                        worst_frame, worst_keypoints, display_metrics
+                    )
+            except Exception as e:
+                print(f"[VideoProcessor] Failed to generate annotated frame: {e}")
+        
         return ExerciseAnalysis(
             exercise_type=exercise_type,
             total_reps=self.counter.get_rep_count(),
@@ -89,7 +120,8 @@ class VideoProcessor:
             rep_data=reps_data,
             overall_issues=overall_issues,
             video_fps=fps,
-            total_frames=total_frames
+            total_frames=total_frames,
+            annotated_frame=annotated_frame_b64,
         )
     
     def _compile_overall_issues(self, reps_data: list) -> list:

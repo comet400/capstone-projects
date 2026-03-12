@@ -41,6 +41,7 @@ def _process_job(job_id: str, exercise: str, ex_enum: ExerciseType, video_path: 
             "total_reps": analysis.total_reps,
             "average_quality": float(analysis.average_quality),
             "report": ReportFormatter.format_json_report(analysis),
+            "annotated_frame": analysis.annotated_frame,
         }
 
     except Exception as e:
