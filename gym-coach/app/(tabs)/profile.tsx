@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,8 +11,10 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { ScreenHeader } from "@/components/ScreenHeader";
-import { Colors, Spacing, Typography, IconSizes } from "@/constants/design";
+import { useAuth } from "@/app/context/AuthContext";
+import { useTheme } from "@/app/context/ThemeContext";
+import { API_BASE_URL } from "@/app/config/api";
+import axios from "axios";
 
 const { width } = Dimensions.get("window");
 
@@ -32,6 +34,7 @@ function GridCard({
   delay: number;
   accent?: boolean;
 }) {
+  const { colors } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -56,7 +59,10 @@ function GridCard({
       ]}
     >
       <Pressable
-        style={[gridStyles.card, accent && gridStyles.cardAccent]}
+        style={[
+          gridStyles.card,
+          accent ? gridStyles.cardAccent : { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
@@ -64,7 +70,7 @@ function GridCard({
         <View style={[gridStyles.iconCircle, accent && gridStyles.iconCircleAccent]}>
           <Ionicons name={icon as any} size={26} color={accent ? "#FFFFFF" : "#2AA8FF"} />
         </View>
-        <Text style={[gridStyles.label, accent && gridStyles.labelAccent]}>{label}</Text>
+        <Text style={[gridStyles.label, { color: accent ? "#FFFFFF" : colors.text }]}>{label}</Text>
         <View style={[gridStyles.arrow, accent && gridStyles.arrowAccent]}>
           <Ionicons name="arrow-forward" size={12} color={accent ? "#2AA8FF" : "#ABABAB"} />
         </View>
@@ -78,43 +84,27 @@ const gridStyles = StyleSheet.create({
   card: {
     aspectRatio: 1,
     borderRadius: 20,
-    backgroundColor: "#F7F7F7",
     padding: 16,
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: "#EFEFEF",
   },
   cardAccent: {
     backgroundColor: "#171C1D",
     borderColor: "#171C1D",
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 48, height: 48, borderRadius: 16,
     backgroundColor: "#EAF5FF",
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: "center", justifyContent: "center",
   },
-  iconCircleAccent: {
-    backgroundColor: "rgba(42,168,255,0.18)",
-  },
+  iconCircleAccent: { backgroundColor: "rgba(42,168,255,0.18)" },
   label: {
-    color: "#171C1D",
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-    marginTop: 8,
+    fontSize: 15, fontWeight: "800", letterSpacing: -0.3, marginTop: 8,
   },
-  labelAccent: { color: "#FFFFFF" },
   arrow: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 26, height: 26, borderRadius: 13,
     backgroundColor: "#EFEFEF",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "flex-end",
+    alignItems: "center", justifyContent: "center", alignSelf: "flex-end",
   },
   arrowAccent: { backgroundColor: "rgba(42,168,255,0.18)" },
 });
@@ -132,32 +122,44 @@ function RecoCard({ source, label }: { source: any; label: string }) {
 
 const recoStyles = StyleSheet.create({
   wrap: {
-    width: 160,
-    height: 120,
-    borderRadius: 18,
-    overflow: "hidden",
-    marginRight: 12,
-    position: "relative",
+    width: 160, height: 120, borderRadius: 18,
+    overflow: "hidden", marginRight: 12, position: "relative",
   },
   image: { width: "100%", height: "100%" },
-  scrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(23,28,29,0.28)",
-  },
+  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(23,28,29,0.28)" },
   label: {
-    position: "absolute",
-    bottom: 10,
-    left: 12,
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.2,
+    position: "absolute", bottom: 10, left: 12,
+    color: "#FFFFFF", fontSize: 12, fontWeight: "800", letterSpacing: 0.2,
   },
 });
 
 // ── Main Screen ─────────────────────────────────────────────────
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user, token } = useAuth();
+  const { colors } = useTheme();
+
+  const [workoutsCompleted, setWorkoutsCompleted] = useState<number | null>(null);
+  const [streak, setStreak] = useState<number | null>(null);
+  const [formScore, setFormScore] = useState<number | null>(null);
+
+  // Fetch dashboard overview stats
+  useEffect(() => {
+    if (!token) return;
+    axios
+      .get(`${API_BASE_URL}/api/dashboard/overview`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res: { data: { workoutsCompleted?: number; streak?: number } }) => {
+        setWorkoutsCompleted(res.data.workoutsCompleted ?? 0);
+        setStreak(res.data.streak ?? 0);
+      })
+      .catch((_err: unknown) => {
+        // Fallback to zeros on error
+        setWorkoutsCompleted(0);
+        setStreak(0);
+      });
+  }, [token]);
 
   const headerFade = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-20)).current;
@@ -179,9 +181,17 @@ export default function ProfileScreen() {
     ]).start();
   }, []);
 
+  const displayName = user?.full_name ?? "Athlete";
+  const firstName = displayName.split(" ")[0];
+
+  const stats = [
+    { val: workoutsCompleted != null ? String(workoutsCompleted) : "—", label: "Workouts" },
+    { val: streak != null ? String(streak) : "—", label: "Streak" },
+    { val: formScore != null ? String(formScore) : "—", label: "Form Score" },
+  ];
+
   return (
-    <View style={styles.root}>
-      {/* Bg blobs */}
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={styles.bgBlob1} />
       <View style={styles.bgBlob2} />
 
@@ -190,33 +200,50 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-          
+        {/* Name heading */}
+        <Animated.View
+          style={[
+            styles.nameBlock,
+            { opacity: headerFade, transform: [{ translateY: headerSlide }] },
+          ]}
+        >
+          <Text style={[styles.greeting, { color: colors.textSecondary }]}>YOUR PROFILE</Text>
+          <Text style={[styles.nameTitle, { color: colors.text }]}>{firstName}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 }}>
+            <View style={styles.levelDot} />
+            <Text style={styles.levelText}>
+              {user?.fitness_level ? user.fitness_level.toUpperCase() : "MEMBER"}
+            </Text>
+          </View>
+        </Animated.View>
+
         {/* Avatar */}
         <Animated.View
-          style={[styles.avatarWrap, { opacity: avatarFade, paddingTop: 20, transform: [{ scale: avatarScale }] }]}
+          style={[
+            styles.avatarWrap,
+            { opacity: avatarFade, transform: [{ scale: avatarScale }] },
+          ]}
         >
           <View style={styles.avatarRing}>
             <Image source={PROFILE_IMAGE} style={styles.mainAvatar} resizeMode="cover" />
           </View>
-          {/* Edit badge */}
-          <Pressable style={styles.editBadge}>
+          <Pressable
+            style={styles.editBadge}
+            onPress={() => router.push("/edit-profile")}
+          >
             <Ionicons name="pencil" size={14} color="#FFFFFF" />
           </Pressable>
         </Animated.View>
 
         {/* Stats strip */}
-        <Animated.View style={[styles.statsStrip, { opacity: sectionFade }]}>
-          {[
-            { val: "48", label: "Workouts" },
-            { val: "12", label: "Streak" },
-            { val: "94", label: "Form Score" },
-          ].map((s, i) => (
+        <Animated.View style={[styles.statsStrip, { opacity: sectionFade, backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {stats.map((s, i) => (
             <React.Fragment key={s.label}>
               <View style={styles.statItem}>
-                <Text style={styles.statVal}>{s.val}</Text>
-                <Text style={styles.statLabel}>{s.label}</Text>
+                <Text style={[styles.statVal, { color: colors.text }]}>{s.val}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{s.label}</Text>
               </View>
-              {i < 2 && <View style={styles.statDivider} />}
+              {i < 2 && <View style={[styles.statDivider, { backgroundColor: colors.border }]} />}
             </React.Fragment>
           ))}
         </Animated.View>
@@ -253,7 +280,7 @@ export default function ProfileScreen() {
         {/* Recommended */}
         <Animated.View style={[{ opacity: sectionFade }]}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recommended for you</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recommended for you</Text>
             <Pressable style={styles.viewAllBtn}>
               <Text style={styles.viewAllText}>View All</Text>
               <Ionicons name="arrow-forward" size={12} color="#2AA8FF" />
@@ -278,148 +305,64 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#FFFFFF" },
-
+  root: { flex: 1 },
   bgBlob1: {
-    position: "absolute",
-    top: -40, right: -50,
+    position: "absolute", top: -40, right: -50,
     width: 200, height: 200, borderRadius: 100,
     backgroundColor: "#2AA8FF", opacity: 0.06,
   },
   bgBlob2: {
-    position: "absolute",
-    bottom: 200, left: -70,
+    position: "absolute", bottom: 200, left: -70,
     width: 240, height: 240, borderRadius: 120,
     backgroundColor: "#171C1D", opacity: 0.04,
   },
-
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20 },
 
-  // Header
-  headerBlock: { marginTop: 24, marginBottom: 28 },
-  tagRow: { flexDirection: "row", marginBottom: 14 },
-  tagPill: {
-    backgroundColor: "#171C1D", borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 5,
-  },
-  tagText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
-  nameTitle: {
-    fontSize: 44, fontWeight: "900", color: "#171C1D",
-    lineHeight: 48, letterSpacing: -1.5,
-  },
-  accentLine: {
-    marginTop: 14, width: 48, height: 4,
-    borderRadius: 2, backgroundColor: "#2AA8FF",
-  },
+  nameBlock: { marginTop: 60, marginBottom: 20 },
+  greeting: { fontSize: 10, fontWeight: "800", letterSpacing: 2, marginBottom: 6 },
+  nameTitle: { fontSize: 44, fontWeight: "900", lineHeight: 48, letterSpacing: -1.5 },
+  levelDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#2AA8FF" },
+  levelText: { color: "#2AA8FF", fontSize: 11, fontWeight: "800", letterSpacing: 1.5 },
 
-  // Avatar
   avatarWrap: {
     alignItems: "center",
     marginBottom: 24,
     position: "relative",
   },
   avatarRing: {
-    width: 148,
-    height: 148,
-    borderRadius: 74,
-    borderWidth: 3,
-    borderColor: "#2AA8FF",
-    padding: 3,
-    shadowColor: "#2AA8FF",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
+    width: 148, height: 148, borderRadius: 74,
+    borderWidth: 3, borderColor: "#2AA8FF", padding: 3,
+    shadowColor: "#2AA8FF", shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2, shadowRadius: 16, elevation: 8,
   },
-  mainAvatar: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 70,
-  },
+  mainAvatar: { width: "100%", height: "100%", borderRadius: 70 },
   editBadge: {
-    position: "absolute",
-    bottom: 32,
-    right: width / 2 - 82,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    position: "absolute", bottom: 8, right: width / 2 - 82,
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: "#171C1D",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-  },
-  levelPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#EAF5FF",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: "#C8E8FF",
-  },
-  levelDot: {
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: "#2AA8FF",
-  },
-  levelText: {
-    color: "#2AA8FF", fontSize: 11,
-    fontWeight: "800", letterSpacing: 1.5,
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 2, borderColor: "#FFFFFF",
   },
 
-  // Stats strip
   statsStrip: {
     flexDirection: "row",
-    backgroundColor: "#F7F7F7",
-    borderRadius: 20,
-    paddingVertical: 18,
-    paddingHorizontal: 12,
-    marginBottom: 20,
+    borderRadius: 20, paddingVertical: 18,
+    paddingHorizontal: 12, marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
   },
   statItem: { flex: 1, alignItems: "center" },
-  statVal: {
-    fontSize: 24, fontWeight: "900",
-    color: "#171C1D", letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: 10, fontWeight: "700",
-    color: "#ABABAB", letterSpacing: 0.5,
-    marginTop: 3,
-  },
-  statDivider: {
-    width: 1, backgroundColor: "#E8E8E8",
-    marginVertical: 4,
-  },
+  statVal: { fontSize: 24, fontWeight: "900", letterSpacing: -0.5 },
+  statLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.5, marginTop: 3 },
+  statDivider: { width: 1, marginVertical: 4 },
 
-  // Grid
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 28,
-  },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 28 },
 
-  // Section header
   sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 14,
+    flexDirection: "row", justifyContent: "space-between",
+    alignItems: "center", marginBottom: 14,
   },
-  sectionTitle: {
-    color: "#171C1D", fontSize: 17,
-    fontWeight: "800", letterSpacing: -0.3,
-  },
-  viewAllBtn: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-  },
-  viewAllText: {
-    color: "#2AA8FF", fontSize: 12, fontWeight: "700",
-  },
+  sectionTitle: { fontSize: 17, fontWeight: "800", letterSpacing: -0.3 },
+  viewAllBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  viewAllText: { color: "#2AA8FF", fontSize: 12, fontWeight: "700" },
 });
