@@ -176,8 +176,10 @@ export default function CameraScreen() {
 
       // Attach annotated skeleton frame to report for DB persistence
       const annotatedFrame = data?.annotated_frame ?? null;
-      if (annotatedFrame && report && typeof report === "object") {
-        report.annotated_frame = annotatedFrame;
+      const annotatedGif = data?.annotated_gif ?? null;
+      if (report && typeof report === "object") {
+        if (annotatedFrame) report.annotated_frame = annotatedFrame;
+        if (annotatedGif) report.annotated_gif = annotatedGif;
       }
 
       // Generate thumbnail for DB storage (base64 JPEG, ~60% quality)

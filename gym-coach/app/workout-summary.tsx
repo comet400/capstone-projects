@@ -363,6 +363,7 @@ export default function WorkoutSummaryScreen() {
   const [report, setReport] = useState<AnalysisReport>(DEMO_REPORT);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [annotatedFrame, setAnnotatedFrame] = useState<string | null>(null);
+  const [annotatedGif, setAnnotatedGif] = useState<string | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -408,6 +409,11 @@ export default function WorkoutSummaryScreen() {
         } else if (data.report?.annotated_frame) {
           setAnnotatedFrame(`data:image/jpeg;base64,${data.report.annotated_frame}`);
         }
+        // Animated GIF
+        const gif = data.annotated_gif ?? data.report?.annotated_gif;
+        if (gif) {
+          setAnnotatedGif(`data:image/gif;base64,${gif}`);
+        }
       } catch (e: any) {
         console.warn("[WorkoutSummary] DB fetch failed:", e);
         setLoadError("Could not load this workout.");
@@ -434,6 +440,11 @@ export default function WorkoutSummaryScreen() {
         // Extract annotated skeleton frame from top-level result
         if (raw.annotated_frame) {
           setAnnotatedFrame(`data:image/jpeg;base64,${raw.annotated_frame}`);
+        }
+        // Extract animated GIF
+        const gif = raw.annotated_gif ?? raw.report?.annotated_gif;
+        if (gif) {
+          setAnnotatedGif(`data:image/gif;base64,${gif}`);
         }
       } catch (e) {
         console.warn("[WorkoutSummary] Failed to parse report param:", e);
@@ -625,16 +636,19 @@ export default function WorkoutSummaryScreen() {
           </View>
         </View>
 
-        {/* ── FORM ANALYSIS — Annotated Skeleton ────────────────────── */}
-        {annotatedFrame && (
+        {/* ── FORM ANALYSIS — Animated GIF or Static Skeleton ─────────── */}
+        {(annotatedGif || annotatedFrame) && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>FORM ANALYSIS</Text>
             <View style={styles.skeletonCard}>
               <Image
-                source={{ uri: annotatedFrame }}
+                source={{ uri: annotatedGif ?? annotatedFrame! }}
                 style={styles.skeletonImage}
                 resizeMode="contain"
               />
+              {annotatedGif && (
+                <Text style={styles.skeletonCaption}>Worst-scoring rep · looping</Text>
+              )}
               <View style={styles.skeletonLegend}>
                 <View style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: "#4ADE80" }]} />
@@ -1037,6 +1051,14 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 4 / 3,
     backgroundColor: "#000",
+  },
+  skeletonCaption: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+    paddingTop: 8,
+    letterSpacing: 0.5,
   },
   skeletonLegend: {
     flexDirection: "row",

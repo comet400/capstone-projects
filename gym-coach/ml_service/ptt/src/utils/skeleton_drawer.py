@@ -149,3 +149,69 @@ def annotate_frame_to_base64(
     annotated = draw_skeleton(frame, keypoints, metrics)
     _, buffer = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, jpeg_quality])
     return base64.b64encode(buffer).decode("utf-8")
+
+
+def create_skeleton_gif(
+    frame_data: List[Tuple[np.ndarray, np.ndarray, Optional[FormMetrics]]],
+    target_width: int = 320,
+    target_fps: int = 10,
+    source_fps: float = 30.0,
+) -> str:
+    """
+    Create an animated GIF with skeleton overlay from a list of frames.
+
+    Args:
+        frame_data: list of (bgr_frame, keypoints_17x3, metrics) tuples
+        target_width: resize width (height scales proportionally)
+        target_fps: output GIF frame rate
+        source_fps: original video FPS (used to calculate frame skip)
+
+    Returns:
+        Base64-encoded GIF string
+    """
+    from PIL import Image
+    import io
+
+    if not frame_data:
+        return ""
+
+    # Calculate frame skip to downsample from source_fps to target_fps
+    skip = max(1, int(round(source_fps / target_fps)))
+
+    pil_frames = []
+    for i, (frame, keypoints, metrics) in enumerate(frame_data):
+        if i % skip != 0:
+            continue
+
+        # Draw skeleton
+        annotated = draw_skeleton(frame, keypoints, metrics)
+
+        # Resize to target width
+        h, w = annotated.shape[:2]
+        scale = target_width / w
+        new_w = target_width
+        new_h = int(h * scale)
+        resized = cv2.resize(annotated, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+        # Convert BGR → RGB → PIL Image
+        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        pil_frames.append(Image.fromarray(rgb))
+
+    if not pil_frames:
+        return ""
+
+    # Encode as GIF
+    buf = io.BytesIO()
+    frame_duration = int(1000 / target_fps)  # ms per frame
+    pil_frames[0].save(
+        buf,
+        format="GIF",
+        save_all=True,
+        append_images=pil_frames[1:],
+        duration=frame_duration,
+        loop=0,  # infinite loop
+        optimize=True,
+    )
+
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
