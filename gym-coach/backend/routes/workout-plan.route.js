@@ -33,7 +33,8 @@ const fitnessLevelToRank = (level) => {
 
 // Default prescription per fitness level
 const getDefaultPrescription = (fitnessLevel) => {
-  switch (fitnessLevel.toLowerCase()) {
+  const level = (fitnessLevel && String(fitnessLevel).toLowerCase()) || "intermediate";
+  switch (level) {
     case "beginner": return { sets: 3, reps: 10, durationSeconds: 45, restSeconds: 75 };
     case "advanced": return { sets: 5, reps: 5, durationSeconds: 60, restSeconds: 120 };
     case "pro":
@@ -41,11 +42,170 @@ const getDefaultPrescription = (fitnessLevel) => {
   }
 };
 
+// PPL: match target_muscles (and category/name) for each day type (case-insensitive)
+const PPL_KEYWORDS = {
+  Push: ["chest", "shoulder", "triceps", "pectoral", "deltoid", "pec"],
+  Pull: ["back", "biceps", "bicep", "trap", "lat", "rhomboid", "rear delt", "row", "pull", "chin"],
+  Legs: ["leg", "quad", "hamstring", "glute", "calf", "calves", "thigh", "hip", "squat", "lunge"],
+};
+
+function matchesDayType(row, dayType) {
+  const keywords = PPL_KEYWORDS[dayType];
+  if (!keywords) return false;
+  const str = [row.target_muscles, row.category, row.name].filter(Boolean).join(" ").toLowerCase();
+  return keywords.some((k) => str.includes(k));
+}
+
+// When falling back (not enough keyword matches), use different slices so each day gets different exercises.
+const PPL_DAY_INDEX = { Push: 0, Pull: 1, Legs: 2 };
+
+// Allow clients to confirm the route exists (GET returns 405; use POST)
+router.get("/generate-week", (req, res) => {
+  res.status(405).set("Allow", "POST").json({ error: "Method not allowed", use: "POST with Authorization" });
+});
+
+router.post("/generate-week", authMiddleware, async (req, res) => {
+  const { exercisesPerDay = 6 } = req.body || {};
+  if (exercisesPerDay <= 0) return res.status(400).json({ message: "exercisesPerDay must be > 0" });
+
+  const client = await pool.connect();
+  try {
+    const { rows: profileRows } = await client.query(
+      `SELECT user_id, fitness_level FROM users WHERE user_id = $1`,
+      [req.userId]
+    );
+    if (!profileRows.length) {
+      return res.status(401).json({ message: "User not found", code: "USER_NOT_FOUND" });
+    }
+    const profile = profileRows[0];
+    const prescription = getDefaultPrescription(profile.fitness_level);
+
+    const { rows: allRows } = await client.query(
+      `SELECT e.exercise_id, e.name, e.description, e.difficulty_level, e.target_muscles, ec.name AS category
+       FROM exercises e
+       JOIN exercise_categories ec ON ec.category_id = e.category_id`
+    );
+    if (!allRows.length) return res.status(400).json({ message: "No exercises found" });
+
+    const buildDay = (dayType) => {
+      const filtered = allRows.filter((r) => matchesDayType(r, dayType));
+      let chosen;
+      if (filtered.length >= exercisesPerDay) {
+        chosen = filtered.slice(0, exercisesPerDay);
+      } else {
+        const dayIndex = PPL_DAY_INDEX[dayType];
+        const start = (dayIndex * exercisesPerDay) % Math.max(allRows.length, 1);
+        chosen = [];
+        for (let i = 0; i < exercisesPerDay; i++) {
+          const idx = (start + i) % allRows.length;
+          chosen.push(allRows[idx]);
+        }
+      }
+      const exercises = chosen.map((ex) => ({
+        exercise_id: ex.exercise_id,
+        name: ex.name,
+        description: ex.description,
+        difficulty_level: ex.difficulty_level,
+        target_muscles: ex.target_muscles,
+        category: ex.category,
+        prescription: {
+          sets: prescription.sets,
+          reps: prescription.reps,
+          duration_seconds: prescription.durationSeconds,
+          rest_seconds: prescription.restSeconds,
+        },
+      }));
+      return {
+        plan_day_id: `ppl-${dayType.toLowerCase()}`,
+        day_number: dayType === "Push" ? 1 : dayType === "Pull" ? 2 : 3,
+        day_label: dayType,
+        exercises,
+      };
+    };
+
+    const push = buildDay("Push");
+    const pull = buildDay("Pull");
+    const legs = buildDay("Legs");
+
+    return res.json({ push, pull, legs });
+  } catch (err) {
+    console.error("Error generating week plan:", err);
+    return res.status(500).json({ error: "Failed to generate week plan" });
+  } finally {
+    client.release();
+  }
+});
+
 router.post("/generate", authMiddleware, async (req, res) => {
   console.log("/generate route hit");
-  const { name, durationWeeks = 4, daysPerWeek = 3, exercisesPerDay = 6 } = req.body || {};
+  const { name, durationWeeks = 4, daysPerWeek = 3, exercisesPerDay = 6, week } = req.body || {};
   console.log("Request body:", req.body);
   console.log("Plan params -> name:", name, "durationWeeks:", durationWeeks, "daysPerWeek:", daysPerWeek, "exercisesPerDay:", exercisesPerDay);
+
+  if (week === true) {
+    const perDay = typeof exercisesPerDay === "number" && exercisesPerDay > 0 ? exercisesPerDay : 6;
+    const client = await pool.connect();
+    try {
+      const { rows: profileRows } = await client.query(
+        `SELECT user_id, fitness_level FROM users WHERE user_id = $1`,
+        [req.userId]
+      );
+      if (!profileRows.length) {
+        client.release();
+        return res.status(401).json({ message: "User not found", code: "USER_NOT_FOUND" });
+      }
+      const profile = profileRows[0];
+      const prescription = getDefaultPrescription(profile.fitness_level);
+      const { rows: allRows } = await client.query(
+        `SELECT e.exercise_id, e.name, e.description, e.difficulty_level, e.target_muscles, ec.name AS category
+         FROM exercises e
+         JOIN exercise_categories ec ON ec.category_id = e.category_id`
+      );
+      if (!allRows.length) {
+        client.release();
+        return res.status(400).json({ message: "No exercises found" });
+      }
+      const buildDay = (dayType) => {
+        const filtered = allRows.filter((r) => matchesDayType(r, dayType));
+        let chosen;
+        if (filtered.length >= perDay) {
+          chosen = filtered.slice(0, perDay);
+        } else {
+          const dayIndex = PPL_DAY_INDEX[dayType];
+          const start = (dayIndex * perDay) % Math.max(allRows.length, 1);
+          chosen = [];
+          for (let i = 0; i < perDay; i++) {
+            chosen.push(allRows[(start + i) % allRows.length]);
+          }
+        }
+        return {
+          plan_day_id: `ppl-${dayType.toLowerCase()}`,
+          day_number: dayType === "Push" ? 1 : dayType === "Pull" ? 2 : 3,
+          day_label: dayType,
+          exercises: chosen.map((ex) => ({
+            exercise_id: ex.exercise_id,
+            name: ex.name,
+            description: ex.description,
+            difficulty_level: ex.difficulty_level,
+            target_muscles: ex.target_muscles,
+            category: ex.category,
+            prescription: {
+              sets: prescription.sets,
+              reps: prescription.reps,
+              duration_seconds: prescription.durationSeconds,
+              rest_seconds: prescription.restSeconds,
+            },
+          })),
+        };
+      };
+      return res.json({ push: buildDay("Push"), pull: buildDay("Pull"), legs: buildDay("Legs") });
+    } catch (err) {
+      console.error("Error generating week (via /generate?week=true):", err);
+      return res.status(500).json({ error: "Failed to generate week plan" });
+    } finally {
+      client.release();
+    }
+  }
 
   if (daysPerWeek <= 0 || daysPerWeek > 7) return res.status(400).json({ message: "daysPerWeek must be 1-7" });
   if (exercisesPerDay <= 0) return res.status(400).json({ message: "exercisesPerDay must be > 0" });
