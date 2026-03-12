@@ -120,44 +120,40 @@ function buildPPLFallbackFromPlan(
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const [user, setUser] = useState<any>(null);
   const [weekPlan, setWeekPlan] = useState<PPLWeekPlan | null>(null);
   const [todayPlan, setTodayPlan] = useState<GeneratedPlanResponse | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
-  const [recentActivity, setRecentActivity] = useState<any | null>(null);
-  const [loadingActivity, setLoadingActivity] = useState(false);
   const [overview, setOverview] = useState<{
-  weeklyProgress: number;
-  totalMinutes: number;
-  totalCalories: number;
-  workoutsCompleted: number;
-  streak: number;
+    weeklyProgress: number;
+    totalMinutes: number;
+    totalCalories: number;
+    workoutsCompleted: number;
+    streak: number;
   } | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
 
   useEffect(() => {
-  const fetchOverview = async () => {
-    try {
-      const token = await AsyncStorage.getItem("token");
-      if (!token) return;
-
-      setLoadingOverview(true);
-      setOverviewError(null);
-
-      const res = await axios.get(`${API_BASE_URL}/api/dashboard/overview`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setOverview(res.data);
-    } catch (error: any) {
-      console.log("Failed to fetch overview:", error?.message ?? error);
-      setOverviewError("Failed to load overview");
-    } finally {
-      setLoadingOverview(false);
-    }
-  };
+    const fetchOverview = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) return;
+        setLoadingOverview(true);
+        setOverviewError(null);
+        const res = await axios.get(`${API_BASE_URL}/api/dashboard/overview`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setOverview(res.data);
+      } catch (error: any) {
+        console.log("Failed to fetch overview:", error?.message ?? error);
+        setOverviewError("Failed to load overview");
+      } finally {
+        setLoadingOverview(false);
+      }
+    };
 
   const fetchUserAndPlan = async () => {
     const token = await AsyncStorage.getItem("token");
@@ -231,10 +227,9 @@ export default function HomeScreen() {
     }
   };
 
-  // Call both functions
-  fetchOverview();
-  fetchUserAndPlan();
-}, []);
+    fetchOverview();
+    fetchUserAndPlan();
+  }, []);
 
   const todayType = getDayType(new Date());
   const todayDayFromWeek = weekPlan
@@ -271,14 +266,24 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header with profile icon */}
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>Good morning, {user?.full_name?.split(" ")[0] || "User"}</Text>
-          <Text style={styles.subGreeting}>Let's crush your goals today</Text>
+          <Text style={[styles.greeting, { color: colors.text }]}>
+            Good morning, {user?.full_name?.split(" ")[0] || "User"}
+          </Text>
+          <Text style={[styles.subGreeting, { color: colors.textSecondary }]}>
+            Let's crush your goals today
+          </Text>
         </View>
-        <View style={styles.profileIcon}>
+        <Pressable
+          style={styles.profileIcon}
+          onPress={() => router.push("/(tabs)/profile")}
+        >
           <Text style={styles.profileInitials}>
             {user?.full_name
               ? user.full_name
@@ -287,58 +292,73 @@ export default function HomeScreen() {
                   .join("")
                   .toUpperCase()
               : "U"}
-        </Text>
-        </View>
+          </Text>
+        </Pressable>
       </View>
 
       {/* Today's Overview */}
-      <View style={styles.dashboardCard}>
+      <View
+        style={[
+          styles.dashboardCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>TODAY'S OVERVIEW</Text>
+          <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>
+            TODAY'S OVERVIEW
+          </Text>
           <Text style={styles.cardLink}>Details</Text>
         </View>
-        
+
         <View style={styles.progressRow}>
           <View style={styles.progressRingContainer}>
-            <View style={styles.progressRing}>
+            <View
+              style={[
+                styles.progressRing,
+                { borderColor: "#2AA8FF", backgroundColor: colors.background },
+              ]}
+            >
               <View style={styles.progressInner}>
-                <Text style={styles.progressNumber}>
-                  {overview ? `${overview.weeklyProgress}%` : "0%"} </Text>
+                <Text style={[styles.progressNumber, { color: colors.text }]}>
+                  {overview ? `${overview.weeklyProgress}%` : "0%"}
+                </Text>
               </View>
             </View>
-            <Text style={styles.progressLabel}>weekly Progress</Text>
+            <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
+              weekly Progress
+            </Text>
           </View>
 
           <View style={styles.statsGrid}>
             {loadingOverview ? (
-              <ActivityIndicator size="small" color={lightColors.primary} />
+              <ActivityIndicator size="small" color="#2AA8FF" />
             ) : overviewError ? (
               <Text style={styles.errorText}>{overviewError}</Text>
             ) : overview ? (
               <>
-                <View style={styles.statBox}>
-                  <Text style={styles.statValue}>{overview.totalMinutes}</Text>
-                  <Text style={styles.statLabel}>mins</Text>
+                <View style={[styles.statBox, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{overview.totalMinutes}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>mins</Text>
                 </View>
-                <View style={styles.statBox}>
-                  <Text style={styles.statValue}>{overview.totalCalories}</Text>
-                  <Text style={styles.statLabel}>kcal</Text>
+                <View style={[styles.statBox, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{overview.totalCalories}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>kcal</Text>
                 </View>
-                <View style={styles.statBox}>
-                  <Text style={styles.statValue}>{overview.workoutsCompleted}</Text>
-                  <Text style={styles.statLabel}>workouts</Text>
+                <View style={[styles.statBox, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{overview.workoutsCompleted}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>workouts</Text>
                 </View>
-                <View style={styles.statBox}>
-                  <Text style={styles.statValue}>{overview.streak}</Text>
-                  <Text style={styles.statLabel}>streak</Text>
+                <View style={[styles.statBox, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{overview.streak}</Text>
+                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>streak</Text>
                 </View>
               </>
             ) : (
               <>
-                <View style={styles.statBox}><Text style={styles.statValue}>0</Text><Text style={styles.statLabel}>mins</Text></View>
-                <View style={styles.statBox}><Text style={styles.statValue}>0</Text><Text style={styles.statLabel}>kcal</Text></View>
-                <View style={styles.statBox}><Text style={styles.statValue}>0</Text><Text style={styles.statLabel}>workouts</Text></View>
-                <View style={styles.statBox}><Text style={styles.statValue}>0</Text><Text style={styles.statLabel}>streak</Text></View>
+                <View style={[styles.statBox, { backgroundColor: colors.background }]}><Text style={[styles.statValue, { color: colors.text }]}>0</Text><Text style={[styles.statLabel, { color: colors.textSecondary }]}>mins</Text></View>
+                <View style={[styles.statBox, { backgroundColor: colors.background }]}><Text style={[styles.statValue, { color: colors.text }]}>0</Text><Text style={[styles.statLabel, { color: colors.textSecondary }]}>kcal</Text></View>
+                <View style={[styles.statBox, { backgroundColor: colors.background }]}><Text style={[styles.statValue, { color: colors.text }]}>0</Text><Text style={[styles.statLabel, { color: colors.textSecondary }]}>workouts</Text></View>
+                <View style={[styles.statBox, { backgroundColor: colors.background }]}><Text style={[styles.statValue, { color: colors.text }]}>0</Text><Text style={[styles.statLabel, { color: colors.textSecondary }]}>streak</Text></View>
               </>
             )}
           </View>
@@ -346,15 +366,22 @@ export default function HomeScreen() {
       </View>
 
       {/* Today's Workout */}
-      <View style={styles.dashboardCard}>
+      <View
+        style={[
+          styles.dashboardCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>TODAY'S WORKOUT</Text>
         </View>
 
         {isLoadingPlan && (
           <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color={lightColors.primary} />
-            <Text style={styles.loadingText}>Building your workout...</Text>
+            <ActivityIndicator size="small" color="#2AA8FF" />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Building your workout...
+            </Text>
           </View>
         )}
 
@@ -389,7 +416,7 @@ export default function HomeScreen() {
               <Text style={styles.workoutName}>
                 {todayDisplayName}
               </Text>
-              <Text style={styles.workoutMeta}>
+              <Text style={[styles.workoutMeta, { color: colors.textSecondary }]}>
                 {todayDay.exercises.length} exercises ·{" "}
                 {todayDay.exercises.reduce(
                   (total, ex) => total + (ex.prescription.sets || 0),
@@ -399,8 +426,11 @@ export default function HomeScreen() {
               </Text>
               <View style={styles.workoutTags}>
                 {todayDay.exercises.slice(0, 3).map((ex) => (
-                  <View key={ex.exercise_id} style={styles.tag}>
-                    <Text style={styles.tagText}>
+                  <View
+                    key={ex.exercise_id}
+                    style={[styles.tag, { backgroundColor: colors.background }]}
+                  >
+                    <Text style={[styles.tagText, { color: colors.textSecondary }]}>
                       {ex.target_muscles || ex.category || ex.name}
                     </Text>
                   </View>
@@ -411,36 +441,39 @@ export default function HomeScreen() {
         )}
 
         {!isLoadingPlan && !todayDay && !planError && (
-          <Text style={styles.emptyText}>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
             No workout generated yet. Complete your profile to get started.
           </Text>
         )}
       </View>
 
-      {/* Recent Activity Preview */}
-      <View style={styles.dashboardCard}>
+      {/* Recent Activity */}
+      <View
+        style={[
+          styles.dashboardCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>RECENT ACTIVITY</Text>
-
+          <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>
+            RECENT ACTIVITY
+          </Text>
           <Pressable onPress={() => router.push("/(tabs)/activities")}>
             <Text style={styles.cardLink}>View All</Text>
           </Pressable>
         </View>
-
         <Pressable
-          style={styles.activityPreview}
+          style={[styles.activityPreview, { backgroundColor: colors.background }]}
           onPress={() => router.push("/(tabs)/activities")}
         >
           <View style={styles.activityPreviewContent}>
-            <Text style={styles.activityPreviewTitle}>
+            <Text style={[styles.activityPreviewTitle, { color: colors.text }]}>
               Upper Body Strength
             </Text>
-
-            <Text style={styles.activityPreviewMeta}>
+            <Text style={[styles.activityPreviewMeta, { color: colors.textSecondary }]}>
               45 min · 320 kcal · Today
             </Text>
           </View>
-
           <Text style={styles.activityArrow}>→</Text>
         </Pressable>
       </View>
@@ -480,6 +513,21 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
+        </View>
+        <Pressable
+          style={styles.weekPlanRow}
+          onPress={() => router.push("/week-plan")}
+        >
+          <View style={styles.weekPills}>
+            <View style={[styles.weekPill, styles.weekPillPush]}><Text style={styles.weekPillText}>Mon Push</Text></View>
+            <View style={[styles.weekPill, styles.weekPillPull]}><Text style={styles.weekPillText}>Tue Pull</Text></View>
+            <View style={[styles.weekPill, styles.weekPillLegs]}><Text style={styles.weekPillText}>Wed Legs</Text></View>
+            <View style={[styles.weekPill, styles.weekPillPush]}><Text style={styles.weekPillText}>Thu Push</Text></View>
+            <View style={[styles.weekPill, styles.weekPillPull]}><Text style={styles.weekPillText}>Fri Pull</Text></View>
+            <View style={[styles.weekPill, styles.weekPillLegs]}><Text style={styles.weekPillText}>Sat Legs</Text></View>
+            <View style={[styles.weekPill, styles.weekPillRest]}><Text style={styles.weekPillText}>Sun Rest</Text></View>
+          </View>
+          <Text style={styles.weekPlanArrow}>→</Text>
         </Pressable>
       </View>
 
@@ -508,30 +556,43 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      
-      <View style={styles.dashboardCard}>
+      {/* Recommended For You */}
+      <View
+        style={[
+          styles.dashboardCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>RECOMMENDED FOR YOU</Text>
+          <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>
+            RECOMMENDED FOR YOU
+          </Text>
           <Text style={styles.cardLink}>More</Text>
         </View>
-        
         <View style={styles.recommendedRow}>
           <View style={styles.recommendedItem}>
             <Image
               source={require("@/assets/images/home/reco1.jpg")}
               style={styles.recommendedImage}
             />
-            <Text style={styles.recommendedName}>Full Body Stretch</Text>
-            <Text style={styles.recommendedMeta}>15 min · beginner</Text>
+            <Text style={[styles.recommendedName, { color: colors.text }]}>
+              Full Body Stretch
+            </Text>
+            <Text style={[styles.recommendedMeta, { color: colors.textSecondary }]}>
+              15 min · beginner
+            </Text>
           </View>
-          
           <View style={styles.recommendedItem}>
             <Image
               source={require("@/assets/images/home/reco2.jpg")}
               style={styles.recommendedImage}
             />
-            <Text style={styles.recommendedName}>Core Strength</Text>
-            <Text style={styles.recommendedMeta}>20 min · intermediate</Text>
+            <Text style={[styles.recommendedName, { color: colors.text }]}>
+              Core Strength
+            </Text>
+            <Text style={[styles.recommendedMeta, { color: colors.textSecondary }]}>
+              20 min · intermediate
+            </Text>
           </View>
         </View>
       </View>
@@ -544,7 +605,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: lightColors.background,
     paddingHorizontal: 16,
   },
   header: {
@@ -555,21 +615,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   greeting: {
-    color: lightColors.text,
     fontSize: 22,
     fontWeight: "600",
   },
   subGreeting: {
-    color: lightColors.textSecondary,
     fontSize: 14,
     marginTop: 2,
   },
-  // New profile icon styles
   profileIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: lightColors.primary,
+    backgroundColor: "#2AA8FF",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -578,16 +635,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
-
-  // Dashboard card styles
   dashboardCard: {
-    backgroundColor: lightColors.card,
     borderRadius: 20,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: lightColors.border,
-    shadowColor: lightColors.shadow,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -600,17 +653,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cardTitle: {
-    color: lightColors.textSecondary,
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 0.5,
   },
   cardLink: {
-    color: lightColors.primary,
+    color: "#2AA8FF",
     fontSize: 12,
     fontWeight: "600",
   },
-
   loadingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -618,7 +669,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   loadingText: {
-    color: lightColors.textSecondary,
     fontSize: 13,
     fontWeight: "500",
   },
@@ -628,11 +678,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   emptyText: {
-    color: lightColors.textSecondary,
     fontSize: 13,
   },
-
-  // Progress section
   progressRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -646,22 +693,18 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 35,
     borderWidth: 3,
-    borderColor: lightColors.primary,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 4,
-    backgroundColor: lightColors.background,
   },
   progressInner: {
     alignItems: "center",
   },
   progressNumber: {
-    color: lightColors.text,
     fontSize: 16,
     fontWeight: "700",
   },
   progressLabel: {
-    color: lightColors.textTertiary,
     fontSize: 10,
     fontWeight: "500",
   },
@@ -673,23 +716,18 @@ const styles = StyleSheet.create({
   },
   statBox: {
     width: "40%",
-    backgroundColor: lightColors.surface,
     borderRadius: 12,
     padding: 8,
     alignItems: "center",
   },
   statValue: {
-    color: lightColors.text,
     fontSize: 16,
     fontWeight: "600",
   },
   statLabel: {
-    color: lightColors.textTertiary,
     fontSize: 11,
     marginTop: 2,
   },
-
-  // Workout section
   workoutRow: {
     flexDirection: "row",
     gap: 14,
@@ -704,13 +742,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   workoutName: {
-    color: lightColors.text,
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 2,
   },
   workoutMeta: {
-    color: lightColors.textSecondary,
     fontSize: 13,
     marginBottom: 8,
   },
@@ -719,13 +755,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tag: {
-    backgroundColor: lightColors.surface,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   tagText: {
-    color: lightColors.textSecondary,
     fontSize: 11,
     fontWeight: "500",
   },
@@ -796,86 +830,34 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   recommendedName: {
-    color: lightColors.text,
     fontSize: 13,
     fontWeight: "500",
     marginBottom: 2,
   },
   recommendedMeta: {
-    color: lightColors.textTertiary,
     fontSize: 11,
   },
-
-  // Upgrade card (special)
-  upgradeCard: {
-    backgroundColor: lightColors.primary,
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: lightColors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  upgradeContent: {
+  activityPreview: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 14,
+    padding: 14,
   },
-  upgradeTitle: {
-    color: "#FFFFFF",
-    fontSize: 16,
+  activityPreviewContent: {
+    flex: 1,
+  },
+  activityPreviewTitle: {
+    fontSize: 14,
     fontWeight: "600",
     marginBottom: 2,
   },
-  upgradeDescription: {
-    color: "rgba(255,255,255,0.8)",
+  activityPreviewMeta: {
     fontSize: 12,
   },
-  upgradeBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  upgradeBadgeText: {
-    color: "#FFFFFF",
+  activityArrow: {
+    color: "#2AA8FF",
     fontSize: 18,
-    fontWeight: "300",
+    fontWeight: "600",
   },
-
-  activityPreview: {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "space-between",
-  backgroundColor: lightColors.surface,
-  borderRadius: 14,
-  padding: 14,
-},
-
-activityPreviewContent: {
-  flex: 1,
-},
-
-activityPreviewTitle: {
-  color: lightColors.text,
-  fontSize: 14,
-  fontWeight: "600",
-  marginBottom: 2,
-},
-
-activityPreviewMeta: {
-  color: lightColors.textSecondary,
-  fontSize: 12,
-},
-
-activityArrow: {
-  color: lightColors.primary,
-  fontSize: 18,
-  fontWeight: "600",
-},
 });
-

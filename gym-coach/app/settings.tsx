@@ -7,65 +7,77 @@ import {
   Pressable,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Colors, Spacing, Typography } from "@/constants/design";
+import { useRouter } from "expo-router";
+import { useAuth } from "@/app/context/AuthContext";
+import { useTheme } from "@/app/context/ThemeContext";
 
 export default function SettingsScreen() {
+  const router = useRouter();
+  const { logout } = useAuth();
+  const { colors } = useTheme();
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/login");
+  };
+
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.title}>Settings</Text>
-      <Text style={styles.subtitle}>
+      <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
         Manage your preferences
       </Text>
 
-      {/* Profile */}
-      <Text style={styles.sectionTitle}>
-        Account
-      </Text>
+      {/* Account */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Account</Text>
 
       <SettingsRow
         icon="account-outline"
         label="Profile"
+        onPress={() => router.push("/edit-profile")}
+        colors={colors}
       />
       <SettingsRow
         icon="lock-outline"
         label="Change Password"
+        onPress={() => {}}
+        colors={colors}
       />
 
       {/* Preferences */}
-      <Text style={styles.sectionTitle}>
-        Preferences
-      </Text>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Preferences</Text>
 
       <SettingsRow
         icon="bell-outline"
         label="Notifications"
+        onPress={() => {}}
+        colors={colors}
       />
       <SettingsRow
         icon="theme-light-dark"
         label="Appearance"
+        onPress={() => router.push("/appearance")}
+        colors={colors}
       />
       <SettingsRow
         icon="target"
         label="Workout Goals"
+        onPress={() => {}}
+        colors={colors}
       />
 
-      {/* Logout */}
-      <Text style={styles.sectionTitle}>
-        More
-      </Text>
+      {/* More */}
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>More</Text>
 
-      <Pressable style={styles.logoutRow}>
-        <MaterialCommunityIcons
-          name="logout"
-          size={22}
-          color="#E5484D"
-        />
-        <Text style={styles.logoutText}>
-          Log Out
-        </Text>
+      <Pressable
+        style={[styles.logoutRow, { backgroundColor: colors.surface }]}
+        onPress={handleLogout}
+      >
+        <MaterialCommunityIcons name="logout" size={22} color="#E5484D" />
+        <Text style={styles.logoutText}>Log Out</Text>
       </Pressable>
 
       <View style={{ height: 120 }} />
@@ -76,28 +88,24 @@ export default function SettingsScreen() {
 function SettingsRow({
   icon,
   label,
+  onPress,
+  colors,
 }: {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
   label: string;
+  onPress: () => void;
+  colors: any;
 }) {
   return (
-    <Pressable style={styles.row}>
+    <Pressable
+      style={[styles.row, { backgroundColor: colors.surface }]}
+      onPress={onPress}
+    >
       <View style={styles.rowLeft}>
-        <MaterialCommunityIcons
-          name={icon}
-          size={22}
-          color={Colors.primary}
-        />
-        <Text style={styles.rowText}>
-          {label}
-        </Text>
+        <MaterialCommunityIcons name={icon} size={22} color="#2AA8FF" />
+        <Text style={[styles.rowText, { color: colors.text }]}>{label}</Text>
       </View>
-
-      <MaterialCommunityIcons
-        name="chevron-right"
-        size={20}
-        color={Colors.textSecondary}
-      />
+      <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
     </Pressable>
   );
 }
@@ -105,33 +113,24 @@ function SettingsRow({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
-    paddingHorizontal: Spacing.screenPadding,
+    paddingHorizontal: 16,
   },
-
   title: {
     marginTop: 60,
-    fontSize: Typography.sizes.xl,
+    fontSize: 28,
     fontWeight: "800",
-    color: Colors.text,
   },
-
   subtitle: {
     marginTop: 6,
-    fontSize: Typography.sizes.sm,
-    color: Colors.textSecondary,
+    fontSize: 14,
   },
-
   sectionTitle: {
     marginTop: 32,
     marginBottom: 14,
-    fontSize: Typography.sizes.lg,
+    fontSize: 16,
     fontWeight: "700",
-    color: Colors.text,
   },
-
   row: {
-    backgroundColor: Colors.surface,
     borderRadius: 18,
     padding: 16,
     marginBottom: 12,
@@ -139,31 +138,25 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-
   rowLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
-
   rowText: {
     marginLeft: 12,
-    fontSize: Typography.sizes.md,
+    fontSize: 15,
     fontWeight: "600",
-    color: Colors.text,
   },
-
   logoutRow: {
-    backgroundColor: Colors.surface,
     borderRadius: 18,
     padding: 16,
     marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
   },
-
   logoutText: {
     marginLeft: 12,
-    fontSize: Typography.sizes.md,
+    fontSize: 15,
     fontWeight: "600",
     color: "#E5484D",
   },

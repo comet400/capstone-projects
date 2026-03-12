@@ -85,6 +85,20 @@ const fieldStyles = StyleSheet.create({
   accentBar: { position: "absolute", bottom: 0, left: 0, right: 0, height: 3, backgroundColor: "#2AA8FF", borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
 });
 
+const unitToggleStyles = StyleSheet.create({
+  wrap: {
+    flexDirection: "row",
+    backgroundColor: "#EFEFEF",
+    borderRadius: 8,
+    padding: 2,
+  },
+  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  pillActive: { backgroundColor: "#171C1D" },
+  text: { fontSize: 10, fontWeight: "700", color: "#9E9E9E" },
+  textActive: { color: "#FFFFFF" },
+});
+
+
 // ── Pill option selector ────────────────────────────────────────
 function OptionGroup({ options, selected, onSelect, icons }: {
   options: string[];
@@ -153,6 +167,18 @@ export default function NewUserScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
+  const [weightUnit, setWeightUnit] = useState<"kg" | "lbs">("kg");
+
+  const toggleWeightUnit = () => {
+    setWeightUnit((prev) => {
+      const next = prev === "kg" ? "lbs" : "kg";
+      const val = parseFloat(weight);
+      if (!isNaN(val)) {
+        setWeight(next === "lbs" ? (val * 2.20462).toFixed(1) : (val / 2.20462).toFixed(1));
+      }
+      return next;
+    });
+  };
   const [fitnessLevel, setFitnessLevel] = useState("Beginner");
   const [workoutLocation, setWorkoutLocation] = useState("Gym");
   const [loading, setLoading] = useState(false);
@@ -193,12 +219,16 @@ export default function NewUserScreen() {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem("token");
+      const weightKg = weightUnit === "lbs"
+        ? parseFloat(weight) / 2.20462
+        : parseFloat(weight);
+
       await axios.post(
         `${API_BASE_URL}/api/profile/update`,
         {
           date_of_birth: dateOfBirth.toISOString().split("T")[0],
           height_cm: parseInt(height),
-          weight_kg: parseFloat(weight),
+          weight_kg: parseFloat(weightKg.toFixed(2)),
           fitness_level: fitnessLevel,
           workout_location: workoutLocation,
         },
@@ -306,21 +336,37 @@ export default function NewUserScreen() {
                   <Field
                     label="HEIGHT"
                     value={height}
-                    onChangeText={setHeight}
+                    onChangeText={(v: string) => setHeight(v.replace(/[^0-9.]/g, ""))}
                     keyboardType="numeric"
                     placeholder="175"
                     suffix="cm"
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Field
-                    label="WEIGHT"
-                    value={weight}
-                    onChangeText={setWeight}
-                    keyboardType="numeric"
-                    placeholder="70"
-                    suffix="kg"
-                  />
+                  <View style={fieldStyles.group}>
+                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+                      <Text style={[fieldStyles.label, { marginBottom: 0, flex: 1 }]}>WEIGHT</Text>
+                      <Pressable onPress={toggleWeightUnit} style={unitToggleStyles.wrap}>
+                        {(["kg", "lbs"] as const).map((u) => (
+                          <View key={u} style={[unitToggleStyles.pill, weightUnit === u && unitToggleStyles.pillActive]}>
+                            <Text style={[unitToggleStyles.text, weightUnit === u && unitToggleStyles.textActive]}>{u}</Text>
+                          </View>
+                        ))}
+                      </Pressable>
+                    </View>
+                    <View style={[fieldStyles.wrapper]}>
+                      <TextInput
+                        style={[fieldStyles.input, { paddingRight: 48 }]}
+                        value={weight}
+                        onChangeText={(v) => setWeight(v.replace(/[^0-9.]/g, ""))}
+                        keyboardType="decimal-pad"
+                        placeholder={weightUnit === "kg" ? "70" : "154"}
+                        placeholderTextColor="#BDBDBD"
+                        autoCapitalize="none"
+                      />
+                      <Text style={fieldStyles.suffix}>{weightUnit}</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
 
