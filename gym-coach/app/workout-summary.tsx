@@ -7,20 +7,22 @@ import {
   ScrollView,
   Dimensions,
   Animated,
+  ActivityIndicator,
 } from "react-native";
 import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Colors, Typography } from "@/constants/design";
 import { LinearGradient } from "expo-linear-gradient";
 import * as VideoThumbnails from "expo-video-thumbnails";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_BASE_URL } from "@/app/config/api";
 
 // Fallback image
 const WORKOUT_IMAGE = require("@/assets/images/home/featured.jpg");
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// ─── Types mirroring the Python JSON report ─────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 interface RepSummary {
   id: number;
   quality: { score: number; grade: string };
@@ -30,11 +32,19 @@ interface RepSummary {
 }
 
 interface AnalysisReport {
-  metadata: { exercise_type: string; duration_seconds: number; video_fps: number };
+  metadata: {
+    exercise_type: string;
+    duration_seconds: number;
+    video_fps: number;
+  };
   summary: {
     total_reps: number;
     average_quality: { score: number; grade: string };
-    performance_tier: "excellent" | "good" | "needs_improvement" | "No_Valid_Reps_Detected";
+    performance_tier:
+      | "excellent"
+      | "good"
+      | "needs_improvement"
+      | "No_Valid_Reps_Detected";
     has_issues: boolean;
   };
   issues: { overall: string[]; frequency: Record<string, number> };
@@ -42,31 +52,81 @@ interface AnalysisReport {
   reps: RepSummary[];
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function scoreColor(score: number): string {
   if (score >= 80) return "#4ADE80";
   if (score >= 60) return "#FACC15";
   return "#F87171";
 }
 
-function tierLabel(tier: AnalysisReport["summary"]["performance_tier"]): string {
+function tierLabel(
+  tier: AnalysisReport["summary"]["performance_tier"]
+): string {
   if (tier === "excellent") return "EXCELLENT";
   if (tier === "good") return "GOOD";
   return "NEEDS WORK";
 }
 
-function tierColors(tier: AnalysisReport["summary"]["performance_tier"]): [string, string] {
+function tierColors(
+  tier: AnalysisReport["summary"]["performance_tier"]
+): [string, string] {
   if (tier === "excellent") return ["#4ADE80", "#22C55E"];
   if (tier === "good") return ["#FACC15", "#EAB308"];
   return ["#F87171", "#EF4444"];
 }
 
-// ─── Animated score ring ─────────────────────────────────────────────────────
+function isValidReport(parsed: any): parsed is AnalysisReport {
+  return (
+    parsed?.summary?.average_quality?.score !== undefined &&
+    parsed?.metadata?.exercise_type &&
+    parsed?.issues &&
+    parsed?.analytics &&
+    Array.isArray(parsed?.reps)
+  );
+}
+
+// ─── Demo / fallback data ─────────────────────────────────────────────────────
+const DEMO_REPORT: AnalysisReport = {
+  metadata: { exercise_type: "squat", duration_seconds: 45.2, video_fps: 30 },
+  summary: {
+    total_reps: 0,
+    average_quality: { score: 0, grade: "N/A" },
+    performance_tier: "No_Valid_Reps_Detected",
+    has_issues: true,
+  },
+  issues: { overall: ["N/A"], frequency: { "N/A": 0 } },
+  analytics: { quality_trend: [0], rep_durations: [0] },
+  reps: [
+    {
+      id: 1,
+      quality: { score: 0, grade: "N/A" },
+      timing: { duration_seconds: 0 },
+      form: { issues: [], is_perfect: false },
+      metrics: { knee_angle: 0, back_lean: 0 },
+    },
+  ],
+};
+
+// ─── AI feedback ──────────────────────────────────────────────────────────────
+function getAiFeedback(report: AnalysisReport): string {
+  const { performance_tier } = report.summary;
+  const topIssue = report.issues.overall[0];
+  const reps = report.summary.total_reps;
+  if (performance_tier === "excellent")
+    return `Incredible session — ${reps} reps with near-perfect mechanics. Your consistency is paying off. Keep this momentum!`;
+  if (performance_tier === "good") {
+    if (topIssue)
+      return `Solid work across ${reps} reps! Main area to target: "${topIssue}". Lock that in and you'll break into excellent territory.`;
+    return `Good session with ${reps} clean reps. Small refinements in tempo will push your score higher next time.`;
+  }
+  if (topIssue)
+    return `${reps} reps recorded. Your biggest limiter right now is "${topIssue}" — address this first and you'll see immediate improvement.`;
+  return `${reps} reps completed. Focus on controlled movement and consistent depth. You've got this!`;
+}
+
+// ─── Score ring ───────────────────────────────────────────────────────────────
 function ScoreRing({ score, size = 120 }: { score: number; size?: number }) {
   const animValue = useRef(new Animated.Value(0)).current;
-  const radius = (size - 16) / 2;
-  const circumference = 2 * Math.PI * radius;
-
   useEffect(() => {
     Animated.timing(animValue, {
       toValue: score / 100,
@@ -74,9 +134,7 @@ function ScoreRing({ score, size = 120 }: { score: number; size?: number }) {
       useNativeDriver: false,
     }).start();
   }, [score]);
-
   const color = scoreColor(score);
-
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
       <View
@@ -111,20 +169,18 @@ function ScoreRing({ score, size = 120 }: { score: number; size?: number }) {
   );
 }
 
-// ─── Mini sparkline chart ─────────────────────────────────────────────────────
+// ─── Sparkline ────────────────────────────────────────────────────────────────
 function QualitySparkline({ data }: { data: number[] }) {
   if (!data.length) return null;
   const W = SCREEN_WIDTH - 80;
   const H = 48;
   const max = Math.max(...data, 100);
   const min = Math.min(...data, 0);
-
-  const pts = data.map((v, i) => {
-    const x = (i / Math.max(data.length - 1, 1)) * W;
-    const y = H - ((v - min) / (max - min + 0.001)) * H;
-    return { x, y, v };
-  });
-
+  const pts = data.map((v, i) => ({
+    x: (i / Math.max(data.length - 1, 1)) * W,
+    y: H - ((v - min) / (max - min + 0.001)) * H,
+    v,
+  }));
   return (
     <View style={{ height: H + 24, marginTop: 8 }}>
       {pts.map((pt, i) => (
@@ -183,7 +239,7 @@ function QualitySparkline({ data }: { data: number[] }) {
   );
 }
 
-// ─── Rep card ────────────────────────────────────────────────────────────────
+// ─── Rep card ─────────────────────────────────────────────────────────────────
 function RepCard({ rep }: { rep: RepSummary }) {
   const color = scoreColor(rep.quality.score);
   return (
@@ -193,7 +249,9 @@ function RepCard({ rep }: { rep: RepSummary }) {
           <Text style={repStyles.repNum}>Rep {rep.id}</Text>
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Text style={[repStyles.score, { color }]}>{rep.quality.score.toFixed(0)}</Text>
+          <Text style={[repStyles.score, { color }]}>
+            {rep.quality.score.toFixed(0)}
+          </Text>
           <View style={[repStyles.gradeBadge, { borderColor: color }]}>
             <Text style={[repStyles.grade, { color }]}>{rep.quality.grade}</Text>
           </View>
@@ -202,7 +260,9 @@ function RepCard({ rep }: { rep: RepSummary }) {
       <View style={repStyles.meta}>
         <View style={repStyles.metaItem}>
           <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.3)" />
-          <Text style={repStyles.metaText}>{rep.timing.duration_seconds.toFixed(1)}s</Text>
+          <Text style={repStyles.metaText}>
+            {rep.timing.duration_seconds.toFixed(1)}s
+          </Text>
         </View>
         {rep.form.is_perfect && (
           <View style={repStyles.perfectBadge}>
@@ -279,113 +339,153 @@ const repStyles = StyleSheet.create({
     backgroundColor: "#F87171",
     marginTop: 5,
   },
-  issueText: { color: "rgba(255,255,255,0.5)", fontSize: 12, flex: 1, lineHeight: 18 },
+  issueText: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 18,
+  },
 });
 
-// ─── Fallback / demo data ────────────────────────────────────────────────────
-const DEMO_REPORT: AnalysisReport = {
-  metadata: { exercise_type: "squat", duration_seconds: 45.2, video_fps: 30 },
-  summary: {
-    total_reps: 0,
-    average_quality: { score: 0, grade: "N/A" },
-    performance_tier: "No_Valid_Reps_Detected",
-    has_issues: true,
-  },
-  issues: {
-    overall: ["N/A"],
-    frequency: { "N/A": 0 },
-  },
-  analytics: {
-    quality_trend: [0],
-    rep_durations: [0],
-  },
-  reps: [
-    {
-      id: 1,
-      quality: { score: 0, grade: "N/A" },
-      timing: { duration_seconds: 0 },
-      form: { issues: [], is_perfect: false },
-      metrics: { knee_angle: 0, back_lean: 0 },
-    },
-  ],
-};
-
-// ─── AI feedback derived from the report ────────────────────────────────────
-function getAiFeedback(report: AnalysisReport): string {
-  const { performance_tier } = report.summary;
-  const topIssue = report.issues.overall[0];
-  const reps = report.summary.total_reps;
-
-  if (performance_tier === "excellent") {
-    return `Incredible session — ${reps} reps with near-perfect mechanics. Your consistency is paying off. Keep this momentum!`;
-  }
-  if (performance_tier === "good") {
-    if (topIssue)
-      return `Solid work across ${reps} reps! Main area to target: "${topIssue}". Lock that in and you'll break into excellent territory.`;
-    return `Good session with ${reps} clean reps. Small refinements in tempo will push your score higher next time.`;
-  }
-  if (topIssue)
-    return `${reps} reps recorded. Your biggest limiter right now is "${topIssue}" — address this first and you'll see immediate improvement.`;
-  return `${reps} reps completed. Focus on controlled movement and consistent depth. You've got this!`;
-}
-
-// ─── Main Screen ─────────────────────────────────────────────────────────────
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function WorkoutSummaryScreen() {
   const router = useRouter();
 
-  // ✅ All hooks inside the component
-  const params = useLocalSearchParams<{ report?: string; videoUri?: string }>();
+  // Supports two entry paths:
+  //  1. Fresh from camera:  params.report + params.videoUri
+  //  2. From history:       params.workoutId  (fetches from DB)
+  const params = useLocalSearchParams<{
+    report?: string;
+    videoUri?: string;
+    workoutId?: string;
+  }>();
+
+  const [report, setReport] = useState<AnalysisReport>(DEMO_REPORT);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  // ✅ Thumbnail generation
+  // ── Entrance animation ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!params.videoUri) return;
-    VideoThumbnails.getThumbnailAsync(decodeURIComponent(params.videoUri), {
-      time: 1500,
-      quality: 0.85,
-    })
-      .then(({ uri }) => setThumbnail(uri))
-      .catch(() => {});
-  }, [params.videoUri]);
-
-  // ✅ Entrance animation
-  useEffect(() => {
+    if (loadingReport) return;
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [loadingReport]);
 
-  // ✅ Parse report
-  let report: AnalysisReport = DEMO_REPORT;
-  try {
+  // ── Path 1: load from DB by workoutId ────────────────────────────────────
+  useEffect(() => {
+    if (!params.workoutId) return;
+    setLoadingReport(true);
+    setLoadError(null);
+
+    (async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        const res = await fetch(
+          `${API_BASE_URL}/api/workouts/${params.workoutId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) throw new Error(`Server ${res.status}`);
+        const data = await res.json();
+
+        if (data.report && isValidReport(data.report)) {
+          setReport(data.report);
+        } else {
+          console.warn("[WorkoutSummary] Invalid report from DB, using demo");
+        }
+
+        if (data.thumbnail_base64) {
+          setThumbnail(`data:image/jpeg;base64,${data.thumbnail_base64}`);
+        }
+      } catch (e: any) {
+        console.warn("[WorkoutSummary] DB fetch failed:", e);
+        setLoadError("Could not load this workout.");
+      } finally {
+        setLoadingReport(false);
+      }
+    })();
+  }, [params.workoutId]);
+
+  // ── Path 2: parse from params (fresh from camera) ────────────────────────
+  useEffect(() => {
+    if (params.workoutId) return; // handled above
+
+    // Parse report from params
     if (params.report) {
-      const raw = JSON.parse(decodeURIComponent(params.report));
-      const parsed = raw.report ?? raw;
-      if (
-        parsed?.summary?.average_quality?.score !== undefined &&
-        parsed?.metadata?.exercise_type &&
-        parsed?.issues &&
-        parsed?.analytics &&
-        Array.isArray(parsed?.reps)
-      ) {
-        report = parsed as AnalysisReport;
-      } else {
-        console.warn("[WorkoutSummary] Invalid structure:", parsed);
+      try {
+        const raw = JSON.parse(decodeURIComponent(params.report));
+        const parsed = raw.report ?? raw;
+        if (isValidReport(parsed)) {
+          setReport(parsed);
+        } else {
+          console.warn("[WorkoutSummary] Invalid report structure in params");
+        }
+      } catch (e) {
+        console.warn("[WorkoutSummary] Failed to parse report param:", e);
       }
     }
-  } catch (e) {
-    console.warn("[WorkoutSummary] Failed to parse report param — using demo data.", e);
+
+    // Generate thumbnail from video URI
+    if (params.videoUri) {
+      VideoThumbnails.getThumbnailAsync(decodeURIComponent(params.videoUri), {
+        time: 1500,
+        quality: 0.85,
+      })
+        .then(({ uri }) => setThumbnail(uri))
+        .catch(() => {});
+    }
+  }, [params.report, params.videoUri]);
+
+  // ── Loading state ─────────────────────────────────────────────────────────
+  if (loadingReport) {
+    return (
+      <View style={styles.loadingRoot}>
+        <ActivityIndicator color="#4ADE80" size="large" />
+        <Text style={styles.loadingText}>Loading workout…</Text>
+      </View>
+    );
   }
 
+  // ── Error state ───────────────────────────────────────────────────────────
+  if (loadError) {
+    return (
+      <View style={styles.loadingRoot}>
+        <Ionicons name="cloud-offline-outline" size={40} color="#F87171" />
+        <Text style={styles.loadingText}>{loadError}</Text>
+        <Pressable style={styles.errorBackBtn} onPress={() => router.back()}>
+          <Text style={styles.errorBackText}>Go Back</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // ── Derived display values ────────────────────────────────────────────────
   const { summary, issues, analytics, reps, metadata } = report;
   const overallScore = summary.average_quality.score;
   const overallColor = scoreColor(overallScore);
   const [tierC1, tierC2] = tierColors(summary.performance_tier);
-  const exerciseName = metadata.exercise_type.toUpperCase();
+  const exerciseName = metadata.exercise_type
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ")
+    .toUpperCase();
   const aiFeedback = getAiFeedback(report);
+
+  // ── "Record Again" navigates correctly for both entry paths ──────────────
+  const handleRecordAgain = () => {
+    if (params.workoutId) {
+      // Came from history — go back to past workouts, not camera
+      router.back();
+    } else {
+      // Came from camera — go back to camera screen
+      router.back();
+    }
+  };
 
   return (
     <View style={styles.root}>
@@ -396,11 +496,18 @@ export default function WorkoutSummaryScreen() {
       >
         {/* ── HERO ─────────────────────────────────────────────────────── */}
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+          {/* Back button — shown when loading from history */}
+          {params.workoutId && (
+            <Pressable style={styles.backBtn} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={20} color="rgba(255,255,255,0.7)" />
+            </Pressable>
+          )}
+
           <View style={styles.heroWrap}>
             <View style={styles.imageFrame}>
               <View style={[styles.frameBorder, { borderColor: overallColor }]}>
-                {/* Corners */}
-                {["TL", "TR", "BL", "BR"].map((pos) => (
+                {/* Corner decorators */}
+                {(["TL", "TR", "BL", "BR"] as const).map((pos) => (
                   <View
                     key={pos}
                     style={[
@@ -416,17 +523,25 @@ export default function WorkoutSummaryScreen() {
                   />
                 ))}
 
-                {/* ✅ Thumbnail from video, fallback to static image */}
                 {thumbnail ? (
-                  <Image source={{ uri: thumbnail }} style={styles.heroImage} resizeMode="cover" />
+                  <Image
+                    source={{ uri: thumbnail }}
+                    style={styles.heroImage}
+                    resizeMode="cover"
+                  />
                 ) : (
-                  <Image source={WORKOUT_IMAGE} style={styles.heroImage} resizeMode="cover" />
+                  <Image
+                    source={WORKOUT_IMAGE}
+                    style={styles.heroImage}
+                    resizeMode="cover"
+                  />
                 )}
 
                 <LinearGradient
                   colors={["transparent", "rgba(0,0,0,0.75)"]}
                   style={styles.heroGradient}
                 />
+
                 <View style={[styles.exerciseBadge, { borderColor: overallColor }]}>
                   <Text style={[styles.exerciseBadgeText, { color: overallColor }]}>
                     {exerciseName}
@@ -438,7 +553,9 @@ export default function WorkoutSummaryScreen() {
             {/* Score banner */}
             <View style={styles.scoreBanner}>
               <View style={styles.scoreBannerLeft}>
-                <Text style={styles.scoreBannerTitle}>ANALYSIS COMPLETE</Text>
+                <Text style={styles.scoreBannerTitle}>
+                  {params.workoutId ? "WORKOUT HISTORY" : "ANALYSIS COMPLETE"}
+                </Text>
                 <View
                   style={[
                     styles.tierPill,
@@ -455,7 +572,9 @@ export default function WorkoutSummaryScreen() {
                   <Text style={styles.metaSmall}>{summary.total_reps} reps</Text>
                   <View style={styles.metaDivider} />
                   <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.4)" />
-                  <Text style={styles.metaSmall}>{metadata.duration_seconds.toFixed(0)}s</Text>
+                  <Text style={styles.metaSmall}>
+                    {metadata.duration_seconds.toFixed(0)}s
+                  </Text>
                 </View>
               </View>
               <ScoreRing score={Math.round(overallScore)} />
@@ -478,8 +597,11 @@ export default function WorkoutSummaryScreen() {
                 isText: true,
               },
             ].map(({ key, val, unit, isText }) => {
-              const numVal = typeof val === "number" ? val : parseFloat(String(val));
-              const displayColor = isText ? "rgba(255,255,255,0.9)" : scoreColor(numVal);
+              const numVal =
+                typeof val === "number" ? val : parseFloat(String(val));
+              const displayColor = isText
+                ? "rgba(255,255,255,0.9)"
+                : scoreColor(numVal);
               return (
                 <View key={key} style={styles.metricTile}>
                   <Text style={[styles.metricTileVal, { color: displayColor }]}>
@@ -494,7 +616,7 @@ export default function WorkoutSummaryScreen() {
         </View>
 
         {/* ── ISSUES ───────────────────────────────────────────────────── */}
-        {issues.overall.length > 0 && (
+        {issues.overall.length > 0 && issues.overall[0] !== "N/A" && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>COMMON ISSUES</Text>
             <View style={styles.issuesCard}>
@@ -553,34 +675,48 @@ export default function WorkoutSummaryScreen() {
         </View>
 
         {/* ── REP-BY-REP ───────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>REP BY REP</Text>
-          {reps.map((rep) => (
-            <RepCard key={rep.id} rep={rep} />
-          ))}
-        </View>
+        {reps.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>REP BY REP</Text>
+            {reps.map((rep) => (
+              <RepCard key={rep.id} rep={rep} />
+            ))}
+          </View>
+        )}
 
         {/* ── ACTIONS ──────────────────────────────────────────────────── */}
         <View style={styles.actions}>
-          <Pressable
-            style={({ pressed }) => [styles.actionPrimary, pressed && { opacity: 0.8 }]}
-            onPress={() => router.back()}
-          >
-            <LinearGradient
-              colors={[tierC1, tierC2]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.actionGradient}
+          {/* Only show "Record Again" when coming fresh from camera */}
+          {!params.workoutId && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionPrimary,
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={handleRecordAgain}
             >
-              <Ionicons name="camera-outline" size={18} color="#000" />
-              <Text style={styles.actionPrimaryText}>Record Again</Text>
-            </LinearGradient>
-          </Pressable>
+              <LinearGradient
+                colors={[tierC1, tierC2]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.actionGradient}
+              >
+                <Ionicons name="camera-outline" size={18} color="#000" />
+                <Text style={styles.actionPrimaryText}>Record Again</Text>
+              </LinearGradient>
+            </Pressable>
+          )}
+
           <Pressable
-            style={({ pressed }) => [styles.actionSecondary, pressed && { opacity: 0.7 }]}
+            style={({ pressed }) => [
+              styles.actionSecondary,
+              pressed && { opacity: 0.7 },
+            ]}
             onPress={() => router.back()}
           >
-            <Text style={styles.actionSecondaryText}>Back to Home</Text>
+            <Text style={styles.actionSecondaryText}>
+              {params.workoutId ? "Back to History" : "Back to Home"}
+            </Text>
           </Pressable>
         </View>
 
@@ -590,15 +726,57 @@ export default function WorkoutSummaryScreen() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#0A0A0F",
-  },
+  root: { flex: 1, backgroundColor: "#0A0A0F" },
   scroll: { flex: 1 },
   content: { paddingTop: 56 },
 
-  // ── Hero ──────────────────────────────────────────────────────────────────
+  // Loading / error
+  loadingRoot: {
+    flex: 1,
+    backgroundColor: "#0A0A0F",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    padding: 32,
+  },
+  loadingText: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 15,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  errorBackBtn: {
+    marginTop: 8,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  errorBackText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  // Back button (history mode)
+  backBtn: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.09)",
+  },
+
+  // Hero
   heroWrap: { marginHorizontal: 16, marginBottom: 8 },
   imageFrame: { marginBottom: 0 },
   frameBorder: {
@@ -616,10 +794,7 @@ const styles = StyleSheet.create({
     zIndex: 3,
   },
   heroImage: { width: "100%", height: "100%" },
-  heroGradient: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 1,
-  },
+  heroGradient: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
   exerciseBadge: {
     position: "absolute",
     bottom: 14,
@@ -667,9 +842,13 @@ const styles = StyleSheet.create({
   tierText: { fontSize: 13, fontWeight: "800", letterSpacing: 0.5 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   metaSmall: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
-  metaDivider: { width: 1, height: 12, backgroundColor: "rgba(255,255,255,0.15)" },
+  metaDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+  },
 
-  // ── Sections ──────────────────────────────────────────────────────────────
+  // Sections
   section: { marginHorizontal: 16, marginTop: 24 },
   sectionLabel: {
     color: "rgba(255,255,255,0.25)",
@@ -679,12 +858,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  // ── Metrics grid ──────────────────────────────────────────────────────────
-  metricsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
+  // Metrics grid
+  metricsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   metricTile: {
     flex: 1,
     minWidth: (SCREEN_WIDTH - 52) / 2 - 5,
@@ -704,7 +879,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // ── Issues ────────────────────────────────────────────────────────────────
+  // Issues
   issuesCard: {
     backgroundColor: "rgba(248,113,113,0.07)",
     borderRadius: 14,
@@ -741,7 +916,7 @@ const styles = StyleSheet.create({
   },
   freqText: { color: "#F87171", fontSize: 11, fontWeight: "700" },
 
-  // ── Trend ─────────────────────────────────────────────────────────────────
+  // Trend
   trendCard: {
     backgroundColor: "rgba(255,255,255,0.04)",
     borderRadius: 14,
@@ -751,7 +926,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
 
-  // ── AI coach ──────────────────────────────────────────────────────────────
+  // AI coach
   aiCard: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   aiAvatarWrap: { position: "relative" },
   aiAvatar: {
@@ -787,7 +962,7 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
 
-  // ── Actions ───────────────────────────────────────────────────────────────
+  // Actions
   actions: { marginHorizontal: 16, marginTop: 28, gap: 10 },
   actionPrimary: { borderRadius: 16, overflow: "hidden" },
   actionGradient: {
@@ -806,5 +981,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
   },
-  actionSecondaryText: { color: "rgba(255,255,255,0.5)", fontSize: 15, fontWeight: "600" },
+  actionSecondaryText: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 15,
+    fontWeight: "600",
+  },
 });

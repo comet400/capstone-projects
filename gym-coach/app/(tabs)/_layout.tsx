@@ -109,7 +109,7 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
       <Ionicons
         name={name as any}
         size={22}
-        color={focused ? "#171C1D" : "#ABABAB"}
+        color={focused ? "#171C1D" : "#686868"}
       />
     </View>
   );
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     right: 14,
     height: 74,
     borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#ccecff",
     borderTopWidth: 0,
     paddingBottom: 8,
     paddingTop: 8,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#adadad",
+    borderColor: "#525252",
     shadowColor: "#171C1D",
     shadowOpacity: 0.12,
     shadowRadius: 12,

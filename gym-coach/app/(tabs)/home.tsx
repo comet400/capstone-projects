@@ -413,18 +413,7 @@ export default function HomeScreen() {
                 )}{" "}
                 total sets
               </Text>
-              <View style={styles.workoutTags}>
-                {todayDay.exercises.slice(0, 3).map((ex) => (
-                  <View
-                    key={ex.exercise_id}
-                    style={[styles.tag, { backgroundColor: colors.background }]}
-                  >
-                    <Text style={[styles.tagText, { color: colors.textSecondary }]}>
-                      {ex.target_muscles || ex.category || ex.name}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+              
             </View>
           </Pressable>
         )}
@@ -493,30 +482,13 @@ export default function HomeScreen() {
                 ? "Recovery · Light stretch or rest"
                 : tomorrowFocus.muscleGroups.join(", ")}
             </Text>
-            <View style={styles.workoutTags}>
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>{getDayName(tomorrowDate)}</Text>
-              </View>
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>{tomorrowType}</Text>
-              </View>
-            </View>
+
           </View>
         </Pressable>
         <Pressable
           style={styles.weekPlanRow}
           onPress={() => router.push("/week-plan")}
         >
-          <View style={styles.weekPills}>
-            <View style={[styles.weekPill, styles.weekPillPush]}><Text style={styles.weekPillText}>Mon Push</Text></View>
-            <View style={[styles.weekPill, styles.weekPillPull]}><Text style={styles.weekPillText}>Tue Pull</Text></View>
-            <View style={[styles.weekPill, styles.weekPillLegs]}><Text style={styles.weekPillText}>Wed Legs</Text></View>
-            <View style={[styles.weekPill, styles.weekPillPush]}><Text style={styles.weekPillText}>Thu Push</Text></View>
-            <View style={[styles.weekPill, styles.weekPillPull]}><Text style={styles.weekPillText}>Fri Pull</Text></View>
-            <View style={[styles.weekPill, styles.weekPillLegs]}><Text style={styles.weekPillText}>Sat Legs</Text></View>
-            <View style={[styles.weekPill, styles.weekPillRest]}><Text style={styles.weekPillText}>Sun Rest</Text></View>
-          </View>
-          <Text style={styles.weekPlanArrow}>→</Text>
         </Pressable>
       </View>
 
@@ -532,16 +504,6 @@ export default function HomeScreen() {
           style={styles.weekPlanRow}
           onPress={() => router.push("/week-plan")}
         >
-          <View style={styles.weekPills}>
-            <View style={[styles.weekPill, styles.weekPillPush]}><Text style={styles.weekPillText}>Mon Push</Text></View>
-            <View style={[styles.weekPill, styles.weekPillPull]}><Text style={styles.weekPillText}>Tue Pull</Text></View>
-            <View style={[styles.weekPill, styles.weekPillLegs]}><Text style={styles.weekPillText}>Wed Legs</Text></View>
-            <View style={[styles.weekPill, styles.weekPillPush]}><Text style={styles.weekPillText}>Thu Push</Text></View>
-            <View style={[styles.weekPill, styles.weekPillPull]}><Text style={styles.weekPillText}>Fri Pull</Text></View>
-            <View style={[styles.weekPill, styles.weekPillLegs]}><Text style={styles.weekPillText}>Sat Legs</Text></View>
-            <View style={[styles.weekPill, styles.weekPillRest]}><Text style={styles.weekPillText}>Sun Rest</Text></View>
-          </View>
-          <Text style={styles.weekPlanArrow}>→</Text>
         </Pressable>
       </View>
 
