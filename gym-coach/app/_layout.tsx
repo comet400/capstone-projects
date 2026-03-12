@@ -23,9 +23,9 @@ export default function RootLayout() {
           <Stack.Screen name="progress" options={{ headerShown: false }} />
           <Stack.Screen name="highlights" options={{ headerShown: false }} />
           <Stack.Screen name="today-workout" options={{ headerShown: false }} />
-        <Stack.Screen name="day-preview" options={{ headerShown: false }} />
-        <Stack.Screen name="week-plan" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          <Stack.Screen name="day-preview" options={{ headerShown: false }} />
+          <Stack.Screen name="week-plan" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="register" options={{ headerShown: false }} />
           <Stack.Screen name="newUser" options={{ headerShown: false }} />

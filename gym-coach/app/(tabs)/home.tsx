@@ -12,21 +12,10 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/app/config/api";
+import { useTheme } from "@/app/context/ThemeContext";
 import { getDayType, getDayName, getDayFocus } from "@/app/lib/ppl-cycle";
 
-const lightColors = {
-  background: "#FFFFFF",
-  surface: "#F8F9FA",
-  card: "#FFFFFF",
-  text: "#1A1A1A",
-  textSecondary: "#6B7280",
-  textTertiary: "#9CA3AF",
-  primary: "#6366F1",
-  secondary: "#10B981",
-  accent: "#F59E0B",
-  border: "#F0F0F0",
-  shadow: "#000000",
-};
+
 
 type GeneratedPlanDayExercise = {
   exercise_id: number;
@@ -513,7 +502,7 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
-        </View>
+        </Pressable>
         <Pressable
           style={styles.weekPlanRow}
           onPress={() => router.push("/week-plan")}
@@ -784,18 +773,18 @@ const styles = StyleSheet.create({
   weekPillPush: { backgroundColor: "#EF4444" },
   weekPillPull: { backgroundColor: "#3B82F6" },
   weekPillLegs: { backgroundColor: "#10B981" },
-  weekPillRest: { backgroundColor: lightColors.textTertiary },
-  weekPlanArrow: { color: lightColors.primary, fontSize: 18, fontWeight: "600", marginLeft: 8 },
+  weekPillRest: { backgroundColor: "#9CA3AF" },
+  weekPlanArrow: { color: "#6366F1", fontSize: 18, fontWeight: "600", marginLeft: 8 },
 
   // Programs section
   programCard: {
     width: 130,
     marginRight: 12,
-    backgroundColor: lightColors.surface,
+    backgroundColor: "#F8F9FA",
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: lightColors.border,
+    borderColor: "#F0F0F0",
   },
   programImage: {
     width: "100%",
@@ -805,13 +794,13 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   programCardTitle: {
-    color: lightColors.text,
+    color: "#1A1A1A",
     fontSize: 13,
     fontWeight: "600",
     marginBottom: 2,
   },
   programCardMeta: {
-    color: lightColors.textTertiary,
+    color: "#9CA3AF",
     fontSize: 11,
   },
 
