@@ -18,6 +18,9 @@ export default function RootLayout() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="workout-summary" options={{ headerShown: false }} />
+        <Stack.Screen name="today-workout" options={{ headerShown: false }} />
+        <Stack.Screen name="day-preview" options={{ headerShown: false }} />
+        <Stack.Screen name="week-plan" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />

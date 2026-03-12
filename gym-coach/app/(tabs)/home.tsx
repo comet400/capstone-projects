@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/app/config/api";
+import { getDayType, getDayName, getDayFocus } from "@/app/lib/ppl-cycle";
 
 const lightColors = {
   background: "#FFFFFF",
@@ -66,9 +67,61 @@ type GeneratedPlanResponse = {
   days: GeneratedPlanDay[];
 };
 
+export const PPL_WEEK_PLAN_KEY = "ppl_week_plan";
+
+export type PPLWeekPlan = {
+  push: GeneratedPlanDay;
+  pull: GeneratedPlanDay;
+  legs: GeneratedPlanDay;
+};
+
+// Mirror backend PPL keywords so fallback still produces correct push/pull/legs
+const PPL_KEYWORDS: Record<string, string[]> = {
+  Push: ["chest", "shoulder", "triceps", "pectoral", "deltoid", "pec"],
+  Pull: ["back", "biceps", "bicep", "trap", "lat", "rhomboid", "rear delt", "row", "pull", "chin"],
+  Legs: ["leg", "quad", "hamstring", "glute", "calf", "calves", "thigh", "hip", "squat", "lunge"],
+};
+
+function matchesPPL(
+  ex: { target_muscles?: string | null; category?: string | null; name?: string },
+  dayType: "Push" | "Pull" | "Legs"
+): boolean {
+  const keywords = PPL_KEYWORDS[dayType];
+  const str = [ex.target_muscles, ex.category, ex.name].filter(Boolean).join(" ").toLowerCase();
+  return keywords.some((k) => str.includes(k));
+}
+
+/** Build PPL week from generate response when generate-week fails (e.g. 404). */
+function buildPPLFallbackFromPlan(
+  days: GeneratedPlanDay[],
+  exercisesPerDay: number
+): PPLWeekPlan {
+  const allEx = days.flatMap((d) => d.exercises.map((e) => ({ ...e, prescription: e.prescription })));
+  const pushEx = allEx.filter((e) => matchesPPL(e, "Push")).slice(0, exercisesPerDay);
+  const pullEx = allEx.filter((e) => matchesPPL(e, "Pull")).slice(0, exercisesPerDay);
+  const legsEx = allEx.filter((e) => matchesPPL(e, "Legs")).slice(0, exercisesPerDay);
+  const toDay = (label: string, exercises: typeof allEx, dayNum: number): GeneratedPlanDay => {
+    const use = exercises.length >= exercisesPerDay
+      ? exercises
+      : allEx.slice((dayNum - 1) * exercisesPerDay, dayNum * exercisesPerDay);
+    return {
+      plan_day_id: dayNum,
+      day_number: dayNum,
+      day_label: label,
+      exercises: use.slice(0, exercisesPerDay),
+    };
+  };
+  return {
+    push: toDay("Push", pushEx, 1),
+    pull: toDay("Pull", pullEx, 2),
+    legs: toDay("Legs", legsEx, 3),
+  };
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [weekPlan, setWeekPlan] = useState<PPLWeekPlan | null>(null);
   const [todayPlan, setTodayPlan] = useState<GeneratedPlanResponse | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
@@ -107,30 +160,72 @@ export default function HomeScreen() {
   };
 
   const fetchUserAndPlan = async () => {
-    try {
-      const token = await AsyncStorage.getItem("token");
-      if (!token) return;
+    const token = await AsyncStorage.getItem("token");
+    if (!token) return;
 
-      // Load basic profile
+    try {
       const profileRes = await axios.get(`${API_BASE_URL}/api/profile/`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUser(profileRes.data);
+    } catch (e) {
+      console.log("Failed to load profile:", e);
+    }
 
-      // Generate today's workout plan
-      setIsLoadingPlan(true);
-      setPlanError(null);
+    setIsLoadingPlan(true);
+    setPlanError(null);
 
-      const planRes = await axios.post<GeneratedPlanResponse>(
+    let planRes: GeneratedPlanResponse | null = null;
+    try {
+      const res = await axios.post<GeneratedPlanResponse>(
         `${API_BASE_URL}/api/workout-plan/generate`,
         { durationWeeks: 4, daysPerWeek: 3, exercisesPerDay: 6 },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      setTodayPlan(planRes.data);
+      planRes = res.data;
+      setTodayPlan(res.data);
     } catch (error: any) {
-      console.log("Failed to load profile or plan:", error?.message ?? error);
-      setPlanError("Could not generate today's workout. Please try again.");
+      console.log("Generate plan failed:", error?.message ?? error);
+      setPlanError("Could not generate workout plan. Please try again.");
+    }
+
+    try {
+      const weekRes = await axios.post<PPLWeekPlan>(
+        `${API_BASE_URL}/api/workout-plan/generate-week`,
+        { exercisesPerDay: 6 },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setWeekPlan(weekRes.data);
+      await AsyncStorage.setItem(PPL_WEEK_PLAN_KEY, JSON.stringify(weekRes.data));
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const code = error?.response?.data?.code;
+      console.log("Generate week failed, using fallback:", status, code, error?.message ?? error);
+      if (status === 404 && token) {
+        try {
+          const weekViaGenerate = await axios.post<PPLWeekPlan>(
+            `${API_BASE_URL}/api/workout-plan/generate`,
+            { week: true, exercisesPerDay: 6 },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setWeekPlan(weekViaGenerate.data);
+          await AsyncStorage.setItem(PPL_WEEK_PLAN_KEY, JSON.stringify(weekViaGenerate.data));
+        } catch (_e) {
+          const days = planRes?.days;
+          if (days?.length) {
+            const fallback = buildPPLFallbackFromPlan(days, 6);
+            setWeekPlan(fallback);
+            AsyncStorage.setItem(PPL_WEEK_PLAN_KEY, JSON.stringify(fallback));
+          }
+        }
+      } else {
+        const days = planRes?.days;
+        if (days?.length) {
+          const fallback = buildPPLFallbackFromPlan(days, 6);
+          setWeekPlan(fallback);
+          AsyncStorage.setItem(PPL_WEEK_PLAN_KEY, JSON.stringify(fallback));
+        }
+      }
     } finally {
       setIsLoadingPlan(false);
     }
@@ -141,14 +236,38 @@ export default function HomeScreen() {
   fetchUserAndPlan();
 }, []);
 
+  const todayType = getDayType(new Date());
+  const todayDayFromWeek = weekPlan
+    ? weekPlan[todayType.toLowerCase() as keyof PPLWeekPlan]
+    : null;
   const todayDay: GeneratedPlanDay | null =
-    todayPlan && todayPlan.days && todayPlan.days.length > 0
-      ? todayPlan.days[0]
-      : null;
+    todayDayFromWeek && todayDayFromWeek.exercises?.length > 0
+      ? todayDayFromWeek
+      : todayPlan?.days?.[0] ?? null;
+  const todayDisplayName =
+    todayDayFromWeek && todayDayFromWeek.exercises?.length > 0
+      ? todayType
+      : todayPlan?.plan?.name ?? "Workout";
+
+  const tomorrowDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  })();
+  const tomorrowType = getDayType(tomorrowDate);
+  const tomorrowFocus = getDayFocus(tomorrowDate);
 
   const handleStartWorkout = () => {
-    // For now, navigate to the Workouts tab, where the live workout/camera flow lives.
-    router.push("/(tabs)/workouts");
+    if (!todayDay) return;
+    const planPayload = {
+      plan: {
+        plan_id: todayPlan?.plan?.plan_id ?? 0,
+        name: todayDisplayName,
+      },
+      day: todayDay,
+    };
+    AsyncStorage.setItem("active_workout_plan", JSON.stringify(planPayload));
+    router.push("/today-workout");
   };
 
   return (
@@ -230,11 +349,6 @@ export default function HomeScreen() {
       <View style={styles.dashboardCard}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>TODAY'S WORKOUT</Text>
-          {todayDay && (
-            <Pressable onPress={handleStartWorkout}>
-              <Text style={styles.cardLink}>Start</Text>
-            </Pressable>
-          )}
         </View>
 
         {isLoadingPlan && (
@@ -248,7 +362,24 @@ export default function HomeScreen() {
           <Text style={styles.errorText}>{planError}</Text>
         )}
 
-        {!isLoadingPlan && todayDay && (
+        {!isLoadingPlan && todayType === "Rest" && (
+          <View style={styles.workoutRow}>
+            <Image
+              source={require("@/assets/images/home/featured.jpg")}
+              style={styles.workoutImage}
+            />
+            <View style={styles.workoutInfo}>
+              <Text style={styles.workoutName}>Rest day</Text>
+              <Text style={styles.workoutMeta}>Recovery · Light stretch or rest. Cycle restarts tomorrow with Push.</Text>
+              <View style={styles.workoutTags}>
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>Sunday</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+        {!isLoadingPlan && todayDay && todayType !== "Rest" && (
           <Pressable style={styles.workoutRow} onPress={handleStartWorkout}>
             <Image
               source={require("@/assets/images/home/featured.jpg")}
@@ -256,7 +387,7 @@ export default function HomeScreen() {
             />
             <View style={styles.workoutInfo}>
               <Text style={styles.workoutName}>
-                {todayPlan?.plan?.name ?? "Personalized Session"}
+                {todayDisplayName}
               </Text>
               <Text style={styles.workoutMeta}>
                 {todayDay.exercises.length} exercises ·{" "}
@@ -315,31 +446,66 @@ export default function HomeScreen() {
       </View>
       
 
-      {/* Tomorrows's Workout */}
+      {/* Tomorrow's Workout (PPL) */}
       <View style={styles.dashboardCard}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>TOMORROW'S WORKOUT</Text>
-          <Text style={styles.cardLink}>View</Text>
+          <Pressable onPress={() => router.push({ pathname: "/day-preview", params: { date: tomorrowDate.toISOString() } })}>
+            <Text style={styles.cardLink}>View</Text>
+          </Pressable>
         </View>
-        
-        <View style={styles.workoutRow}>
+        <Pressable
+          style={styles.workoutRow}
+          onPress={() => router.push({ pathname: "/day-preview", params: { date: tomorrowDate.toISOString() } })}
+        >
           <Image
             source={require("@/assets/images/home/featured.jpg")}
             style={styles.workoutImage}
           />
           <View style={styles.workoutInfo}>
-            <Text style={styles.workoutName}>30 Min HIIT Cardio</Text>
-            <Text style={styles.workoutMeta}>3 exercises · 4 sets</Text>
+            <Text style={styles.workoutName}>
+              {tomorrowType === "Rest" ? "Rest day" : `${tomorrowType} day`}
+            </Text>
+            <Text style={styles.workoutMeta}>
+              {tomorrowType === "Rest"
+                ? "Recovery · Light stretch or rest"
+                : tomorrowFocus.muscleGroups.join(", ")}
+            </Text>
             <View style={styles.workoutTags}>
               <View style={styles.tag}>
-                <Text style={styles.tagText}>Full Body</Text>
+                <Text style={styles.tagText}>{getDayName(tomorrowDate)}</Text>
               </View>
               <View style={styles.tag}>
-                <Text style={styles.tagText}>HIIT</Text>
+                <Text style={styles.tagText}>{tomorrowType}</Text>
               </View>
             </View>
           </View>
+        </Pressable>
+      </View>
+
+      {/* Week plan – Push / Pull / Legs */}
+      <View style={styles.dashboardCard}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>THIS WEEK</Text>
+          <Pressable onPress={() => router.push("/week-plan")}>
+            <Text style={styles.cardLink}>View full week</Text>
+          </Pressable>
         </View>
+        <Pressable
+          style={styles.weekPlanRow}
+          onPress={() => router.push("/week-plan")}
+        >
+          <View style={styles.weekPills}>
+            <View style={[styles.weekPill, styles.weekPillPush]}><Text style={styles.weekPillText}>Mon Push</Text></View>
+            <View style={[styles.weekPill, styles.weekPillPull]}><Text style={styles.weekPillText}>Tue Pull</Text></View>
+            <View style={[styles.weekPill, styles.weekPillLegs]}><Text style={styles.weekPillText}>Wed Legs</Text></View>
+            <View style={[styles.weekPill, styles.weekPillPush]}><Text style={styles.weekPillText}>Thu Push</Text></View>
+            <View style={[styles.weekPill, styles.weekPillPull]}><Text style={styles.weekPillText}>Fri Pull</Text></View>
+            <View style={[styles.weekPill, styles.weekPillLegs]}><Text style={styles.weekPillText}>Sat Legs</Text></View>
+            <View style={[styles.weekPill, styles.weekPillRest]}><Text style={styles.weekPillText}>Sun Rest</Text></View>
+          </View>
+          <Text style={styles.weekPlanArrow}>→</Text>
+        </Pressable>
       </View>
 
       
@@ -563,6 +729,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "500",
   },
+
+  weekPlanRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  weekPills: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    flex: 1,
+  },
+  weekPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  weekPillText: { fontSize: 11, fontWeight: "600", color: "#fff" },
+  weekPillPush: { backgroundColor: "#EF4444" },
+  weekPillPull: { backgroundColor: "#3B82F6" },
+  weekPillLegs: { backgroundColor: "#10B981" },
+  weekPillRest: { backgroundColor: lightColors.textTertiary },
+  weekPlanArrow: { color: lightColors.primary, fontSize: 18, fontWeight: "600", marginLeft: 8 },
 
   // Programs section
   programCard: {
