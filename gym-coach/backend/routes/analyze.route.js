@@ -46,4 +46,17 @@ router.post("/", upload.single("video"), async (req, res) => {
     }
 });
 
+// Proxy job-status polling to FastAPI
+router.get("/:jobId", async (req, res) => {
+    try {
+        const fastapiRes = await axios.get(`${FASTAPI_URL}/${req.params.jobId}`);
+        return res.json(fastapiRes.data);
+    } catch (err) {
+        console.error("Analyze poll error:", err?.response?.data ?? err.message);
+        return res.status(err?.response?.status ?? 500).json({
+            error: err?.response?.data ?? err.message,
+        });
+    }
+});
+
 module.exports = router;
