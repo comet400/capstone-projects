@@ -188,6 +188,7 @@ export default function RegisterScreen() {
       const { token, user } = response.data;
       if (token && user) {
         await AsyncStorage.setItem("token", token);
+        await AsyncStorage.setItem("user", JSON.stringify(user));
         await AsyncStorage.setItem("user_id", user.user_id.toString());
         await AsyncStorage.setItem("profile_completed", "false");
         router.replace("/newUser");
