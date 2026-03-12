@@ -17,6 +17,12 @@ export interface ThemeColors {
   cardBorder: string;
   danger: string;
   success: string;
+  tabBar: string;
+  tabBarBorder: string;
+  tabBarActiveTint: string;
+  tabBarInactiveTint: string;
+  iconDefault: string;
+  iconHighlight: string;
   isDark: boolean;
 }
 
@@ -33,6 +39,12 @@ const LIGHT_COLORS: ThemeColors = {
   cardBorder: '#EFEFEF',
   danger: '#E5484D',
   success: '#27AE60',
+  tabBar: '#ccecff',
+  tabBarBorder: '#EFEFEF',
+  tabBarActiveTint: '#171C1D',
+  tabBarInactiveTint: '#ABABAB',
+  iconDefault: '#686868',
+  iconHighlight: '#171C1D',
   isDark: false,
 };
 
@@ -49,6 +61,12 @@ const DARK_COLORS: ThemeColors = {
   cardBorder: '#2A2A2A',
   danger: '#FF3B30',
   success: '#4ADE80',
+  tabBar: '#1A1A1A',
+  tabBarBorder: '#2A2A2A',
+  tabBarActiveTint: '#FFFFFF',
+  tabBarInactiveTint: '#888888',
+  iconDefault: '#AAAAAA',
+  iconHighlight: '#FFFFFF',
   isDark: true,
 };
 

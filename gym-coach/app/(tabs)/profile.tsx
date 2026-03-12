@@ -61,18 +61,18 @@ function GridCard({
       <Pressable
         style={[
           gridStyles.card,
-          accent ? gridStyles.cardAccent : { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.surface, borderColor: colors.border },
         ]}
         onPress={onPress}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
       >
         <View style={[gridStyles.iconCircle, accent && gridStyles.iconCircleAccent]}>
-          <Ionicons name={icon as any} size={26} color={accent ? "#FFFFFF" : "#2AA8FF"} />
+          <Ionicons name={icon as any} size={26} color="#2AA8FF" />
         </View>
-        <Text style={[gridStyles.label, { color: accent ? "#FFFFFF" : colors.text }]}>{label}</Text>
-        <View style={[gridStyles.arrow, accent && gridStyles.arrowAccent]}>
-          <Ionicons name="arrow-forward" size={12} color={accent ? "#2AA8FF" : "#ABABAB"} />
+        <Text style={[gridStyles.label, { color: colors.text }]}>{label}</Text>
+        <View style={[gridStyles.arrow, accent ? gridStyles.arrowAccent : { backgroundColor: colors.surfaceHighlight }]}>
+          <Ionicons name="arrow-forward" size={12} color={accent ? "#2AA8FF" : colors.textSecondary} />
         </View>
       </Pressable>
     </Animated.View>
@@ -94,7 +94,7 @@ const gridStyles = StyleSheet.create({
   },
   iconCircle: {
     width: 48, height: 48, borderRadius: 16,
-    backgroundColor: "#EAF5FF",
+    backgroundColor: "rgba(42,168,255,0.12)",
     alignItems: "center", justifyContent: "center",
   },
   iconCircleAccent: { backgroundColor: "rgba(42,168,255,0.18)" },
@@ -103,7 +103,6 @@ const gridStyles = StyleSheet.create({
   },
   arrow: {
     width: 26, height: 26, borderRadius: 13,
-    backgroundColor: "#EFEFEF",
     alignItems: "center", justifyContent: "center", alignSelf: "flex-end",
   },
   arrowAccent: { backgroundColor: "rgba(42,168,255,0.18)" },
@@ -228,7 +227,7 @@ export default function ProfileScreen() {
             <Image source={PROFILE_IMAGE} style={styles.mainAvatar} resizeMode="cover" />
           </View>
           <Pressable
-            style={styles.editBadge}
+            style={[styles.editBadge, { borderColor: colors.isDark ? '#2A2A2A' : '#FFFFFF' }]}
             onPress={() => router.push("/edit-profile")}
           >
             <Ionicons name="pencil" size={14} color="#FFFFFF" />

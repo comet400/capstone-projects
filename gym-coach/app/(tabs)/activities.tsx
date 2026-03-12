@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
 
   title: { marginTop: 60, fontSize: 28, fontWeight: "800" },
   subtitle: { marginTop: 6, fontSize: 14 },
-  sectionTitle: { marginTop: 24, marginBottom: 14, fontSize: 17, fontWeight: "700" },
+  sectionTitle: { marginTop: 14, marginBottom: 10, fontSize: 17, fontWeight: "700" },
 
   grid: {
     flexDirection: "row",
@@ -146,11 +146,11 @@ const styles = StyleSheet.create({
   },
   muscleCard: {
     width: "48%",
-    aspectRatio: 1,
+    aspectRatio: 1.4,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 14,
+    marginBottom: 8,
   },
   muscleLabel: { marginTop: 10, fontSize: 14, fontWeight: "600" },
 

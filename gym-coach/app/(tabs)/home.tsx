@@ -362,7 +362,7 @@ export default function HomeScreen() {
         ]}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>TODAY'S WORKOUT</Text>
+          <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>TODAY'S WORKOUT</Text>
         </View>
 
         {isLoadingPlan && (
@@ -385,11 +385,11 @@ export default function HomeScreen() {
               style={styles.workoutImage}
             />
             <View style={styles.workoutInfo}>
-              <Text style={styles.workoutName}>Rest day</Text>
-              <Text style={styles.workoutMeta}>Recovery · Light stretch or rest. Cycle restarts tomorrow with Push.</Text>
+              <Text style={[styles.workoutName, { color: colors.text }]}>Rest day</Text>
+              <Text style={[styles.workoutMeta, { color: colors.textSecondary }]}>Recovery · Light stretch or rest. Cycle restarts tomorrow with Push.</Text>
               <View style={styles.workoutTags}>
-                <View style={styles.tag}>
-                  <Text style={styles.tagText}>Sunday</Text>
+                <View style={[styles.tag, { backgroundColor: colors.surfaceHighlight }]}>
+                  <Text style={[styles.tagText, { color: colors.textSecondary }]}>Sunday</Text>
                 </View>
               </View>
             </View>
@@ -402,7 +402,7 @@ export default function HomeScreen() {
               style={styles.workoutImage}
             />
             <View style={styles.workoutInfo}>
-              <Text style={styles.workoutName}>
+              <Text style={[styles.workoutName, { color: colors.text }]}>
                 {todayDisplayName}
               </Text>
               <Text style={[styles.workoutMeta, { color: colors.textSecondary }]}>
@@ -458,9 +458,9 @@ export default function HomeScreen() {
       
 
       {/* Tomorrow's Workout (PPL) */}
-      <View style={styles.dashboardCard}>
+      <View style={[styles.dashboardCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>TOMORROW'S WORKOUT</Text>
+          <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>TOMORROW'S WORKOUT</Text>
           <Pressable onPress={() => router.push({ pathname: "/day-preview", params: { date: tomorrowDate.toISOString() } })}>
             <Text style={styles.cardLink}>View</Text>
           </Pressable>
@@ -474,10 +474,10 @@ export default function HomeScreen() {
             style={styles.workoutImage}
           />
           <View style={styles.workoutInfo}>
-            <Text style={styles.workoutName}>
+            <Text style={[styles.workoutName, { color: colors.text }]}>
               {tomorrowType === "Rest" ? "Rest day" : `${tomorrowType} day`}
             </Text>
-            <Text style={styles.workoutMeta}>
+            <Text style={[styles.workoutMeta, { color: colors.textSecondary }]}>
               {tomorrowType === "Rest"
                 ? "Recovery · Light stretch or rest"
                 : tomorrowFocus.muscleGroups.join(", ")}
@@ -493,9 +493,9 @@ export default function HomeScreen() {
       </View>
 
       {/* Week plan – Push / Pull / Legs */}
-      <View style={styles.dashboardCard}>
+      <View style={[styles.dashboardCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
-          <Text style={styles.cardTitle}>THIS WEEK</Text>
+          <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>THIS WEEK</Text>
           <Pressable onPress={() => router.push("/week-plan")}>
             <Text style={styles.cardLink}>View full week</Text>
           </Pressable>
@@ -756,13 +756,11 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   programCardTitle: {
-    color: "#1A1A1A",
     fontSize: 13,
     fontWeight: "600",
     marginBottom: 2,
   },
   programCardMeta: {
-    color: "#9CA3AF",
     fontSize: 11,
   },
 

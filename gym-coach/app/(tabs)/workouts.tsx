@@ -15,6 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/app/config/api";
+import { useTheme } from "@/app/context/ThemeContext";
+import type { ThemeColors } from "@/app/context/ThemeContext";
 
 const { width } = Dimensions.get("window");
 const WORKOUT_IMAGE = require("@/assets/images/home/featured.jpg");
@@ -76,10 +78,12 @@ function WorkoutCard({
   workout,
   index,
   onPress,
+  colors,
 }: {
   workout: WorkoutRow;
   index: number;
   onPress: () => void;
+  colors: ThemeColors;
 }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -112,6 +116,10 @@ function WorkoutCard({
       <Pressable
         style={({ pressed }) => [
           styles.workoutCard,
+          {
+            backgroundColor: colors.background,
+            borderColor: colors.border,
+          },
           pressed && { opacity: 0.93, transform: [{ scale: 0.985 }] },
         ]}
         onPress={onPress}
@@ -149,7 +157,7 @@ function WorkoutCard({
         {/* Info */}
         <View style={styles.cardInfo}>
           <View style={styles.cardInfoTop}>
-            <Text style={styles.cardTitle} numberOfLines={1}>
+            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
               {capitalizeExercise(workout.exercise_type)}
             </Text>
             <View style={[styles.tierPill, { backgroundColor: `${tc}18` }]}>
@@ -159,24 +167,24 @@ function WorkoutCard({
             </View>
           </View>
 
-          <Text style={styles.cardDate}>{formatDate(workout.created_at)}</Text>
+          <Text style={[styles.cardDate, { color: colors.textSecondary }]}>{formatDate(workout.created_at)}</Text>
 
           <View style={styles.cardMeta}>
             <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={13} color="#9E9E9E" />
-              <Text style={styles.metaText}>
+              <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>
                 {formatDuration(workout.duration_seconds)}
               </Text>
             </View>
             <View style={styles.metaItem}>
-              <Ionicons name="repeat-outline" size={13} color="#9E9E9E" />
-              <Text style={styles.metaText}>{workout.total_reps} reps</Text>
+              <Ionicons name="repeat-outline" size={13} color={colors.textSecondary} />
+              <Text style={[styles.metaText, { color: colors.textSecondary }]}>{workout.total_reps} reps</Text>
             </View>
           </View>
 
           {/* Score bar */}
           <View style={styles.scoreBarRow}>
-            <View style={styles.scoreBarTrack}>
+            <View style={[styles.scoreBarTrack, { backgroundColor: colors.surfaceHighlight }]}>
               <View
                 style={[
                   styles.scoreBarFill,
@@ -196,14 +204,14 @@ function WorkoutCard({
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
-function EmptyState({ fadeAnim }: { fadeAnim: Animated.Value }) {
+function EmptyState({ fadeAnim, colors }: { fadeAnim: Animated.Value; colors: ThemeColors }) {
   return (
     <Animated.View style={[styles.emptyWrap, { opacity: fadeAnim }]}>
-      <View style={styles.emptyIconRing}>
-        <Ionicons name="barbell-outline" size={36} color="#ABABAB" />
+      <View style={[styles.emptyIconRing, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Ionicons name="barbell-outline" size={36} color={colors.textSecondary} />
       </View>
-      <Text style={styles.emptyTitle}>No workouts recorded yet</Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>No workouts recorded yet</Text>
+      <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
         Record your first session using the camera{"\n"}and it'll appear here
       </Text>
     </Animated.View>
@@ -213,6 +221,7 @@ function EmptyState({ fadeAnim }: { fadeAnim: Animated.Value }) {
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function WorkoutsScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
 
   const [workouts, setWorkouts] = useState<WorkoutRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -301,9 +310,9 @@ export default function WorkoutsScreen() {
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <View style={styles.centeredContainer}>
+      <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color="#2AA8FF" />
-        <Text style={styles.loadingText}>Loading workouts…</Text>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading workouts…</Text>
       </View>
     );
   }
@@ -311,11 +320,11 @@ export default function WorkoutsScreen() {
   // ── Error ─────────────────────────────────────────────────────────────────
   if (error) {
     return (
-      <View style={styles.centeredContainer}>
-        <Ionicons name="cloud-offline-outline" size={48} color="#ABABAB" />
-        <Text style={styles.errorTitle}>Something went wrong</Text>
-        <Text style={styles.errorMsg}>{error}</Text>
-        <Pressable style={styles.retryBtn} onPress={() => fetchWorkouts()}>
+      <View style={[styles.centeredContainer, { backgroundColor: colors.background }]}>
+        <Ionicons name="cloud-offline-outline" size={48} color={colors.textSecondary} />
+        <Text style={[styles.errorTitle, { color: colors.text }]}>Something went wrong</Text>
+        <Text style={[styles.errorMsg, { color: colors.textSecondary }]}>{error}</Text>
+        <Pressable style={[styles.retryBtn, { backgroundColor: colors.isDark ? '#2AA8FF' : '#171C1D' }]} onPress={() => fetchWorkouts()}>
           <Text style={styles.retryText}>Try Again</Text>
         </Pressable>
       </View>
@@ -323,7 +332,7 @@ export default function WorkoutsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Background blobs */}
       <View style={styles.bgBlob1} />
       <View style={styles.bgBlob2} />
@@ -351,47 +360,47 @@ export default function WorkoutsScreen() {
           ]}
         >
           <View>
-            <Text style={styles.headerTitle}>Past Workouts</Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Past Workouts</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
               {totalWorkouts > 0
                 ? `${totalWorkouts} session${totalWorkouts !== 1 ? "s" : ""} recorded`
                 : "Your history will appear here"}
             </Text>
           </View>
           <Pressable
-            style={styles.refreshBtn}
+            style={[styles.refreshBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             onPress={() => fetchWorkouts(true)}
           >
-            <Ionicons name="refresh-outline" size={20} color="#555" />
+            <Ionicons name="refresh-outline" size={20} color={colors.textSecondary} />
           </Pressable>
         </Animated.View>
 
         {/* ── Stats strip — only visible when there are workouts ── */}
         {workouts.length > 0 && (
-          <Animated.View style={[styles.statsStrip, { opacity: statsFade }]}>
+          <Animated.View style={[styles.statsStrip, { opacity: statsFade, backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{totalWorkouts}</Text>
-              <Text style={styles.statLabel}>Sessions</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{totalWorkouts}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Sessions</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <View style={styles.statItem}>
               <Text
                 style={[styles.statValue, { color: scoreColor(avgScore) }]}
               >
                 {avgScore}
               </Text>
-              <Text style={styles.statLabel}>Avg Score</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Avg Score</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{totalReps}</Text>
-              <Text style={styles.statLabel}>Total Reps</Text>
+              <Text style={[styles.statValue, { color: colors.text }]}>{totalReps}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total Reps</Text>
             </View>
           </Animated.View>
         )}
 
         {/* ── Empty state ── */}
-        {workouts.length === 0 && <EmptyState fadeAnim={emptyFade} />}
+        {workouts.length === 0 && <EmptyState fadeAnim={emptyFade} colors={colors} />}
 
         {/* ── Workout cards ── */}
         {workouts.map((workout, index) => (
@@ -399,6 +408,7 @@ export default function WorkoutsScreen() {
             key={workout.id}
             workout={workout}
             index={index}
+            colors={colors}
             onPress={() =>
               router.push({
                 pathname: "/workout-summary",
@@ -418,7 +428,6 @@ export default function WorkoutsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
   bgBlob1: {
     position: "absolute",
@@ -443,33 +452,28 @@ const styles = StyleSheet.create({
 
   centeredContainer: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
     gap: 12,
   },
   loadingText: {
-    color: "#ABABAB",
     fontSize: 14,
     fontWeight: "500",
     marginTop: 8,
   },
   errorTitle: {
-    color: "#171C1D",
     fontSize: 18,
     fontWeight: "800",
     marginTop: 8,
   },
   errorMsg: {
-    color: "#9E9E9E",
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,
   },
   retryBtn: {
     marginTop: 8,
-    backgroundColor: "#171C1D",
     paddingHorizontal: 28,
     paddingVertical: 12,
     borderRadius: 14,
@@ -488,14 +492,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerTitle: {
-    color: "#171C1D",
     fontSize: 26,
     fontWeight: "900",
     letterSpacing: -0.6,
     marginBottom: 2,
   },
   headerSubtitle: {
-    color: "#ABABAB",
     fontSize: 13,
     fontWeight: "500",
   },
@@ -503,38 +505,32 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#F4F4F4",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#EFEFEF",
   },
 
   // Stats strip
   statsStrip: {
-    backgroundColor: "#F7F7F7",
     borderRadius: 18,
     padding: 18,
     flexDirection: "row",
     justifyContent: "space-around",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#EFEFEF",
   },
   statItem: { alignItems: "center", gap: 4 },
   statValue: {
-    color: "#171C1D",
     fontSize: 24,
     fontWeight: "800",
     letterSpacing: -0.5,
   },
   statLabel: {
-    color: "#ABABAB",
     fontSize: 11,
     fontWeight: "600",
     letterSpacing: 0.3,
   },
-  statDivider: { width: 1, backgroundColor: "#E8E8E8" },
+  statDivider: { width: 1 },
 
   // Empty state
   emptyWrap: {
@@ -547,21 +543,17 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#F4F4F4",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#EFEFEF",
     marginBottom: 4,
   },
   emptyTitle: {
-    color: "#171C1D",
     fontSize: 18,
     fontWeight: "800",
     letterSpacing: -0.3,
   },
   emptySubtitle: {
-    color: "#ABABAB",
     fontSize: 14,
     textAlign: "center",
     lineHeight: 21,
@@ -569,12 +561,10 @@ const styles = StyleSheet.create({
 
   // Workout card
   workoutCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 20,
     marginBottom: 16,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#EFEFEF",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.06,
@@ -618,7 +608,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardTitle: {
-    color: "#171C1D",
     fontSize: 16,
     fontWeight: "800",
     flex: 1,
@@ -630,10 +619,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   tierPillText: { fontSize: 9, fontWeight: "800", letterSpacing: 1 },
-  cardDate: { color: "#ABABAB", fontSize: 12, fontWeight: "500" },
+  cardDate: { fontSize: 12, fontWeight: "500" },
   cardMeta: { flexDirection: "row", gap: 14 },
   metaItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  metaText: { color: "#9E9E9E", fontSize: 12, fontWeight: "500" },
+  metaText: { fontSize: 12, fontWeight: "500" },
   scoreBarRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -643,7 +632,6 @@ const styles = StyleSheet.create({
   scoreBarTrack: {
     flex: 1,
     height: 4,
-    backgroundColor: "#F0F0F0",
     borderRadius: 2,
     overflow: "hidden",
   },
