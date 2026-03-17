@@ -5,18 +5,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HapticTab } from "../../components/haptic-tab";
 import { Colors, Typography, IconSizes } from "@/constants/design";
+import { useTheme } from "@/app/context/ThemeContext";
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const isCamera = pathname === "/camera";
+  const { colors } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#171C1D",
-        tabBarInactiveTintColor: "#ABABAB",
+        tabBarActiveTintColor: colors.tabBarActiveTint,
+        tabBarInactiveTintColor: colors.tabBarInactiveTint,
         tabBarLabelStyle: {
           fontSize: 10,
           marginTop: -2,
@@ -27,8 +29,11 @@ export default function TabsLayout() {
         tabBarStyle: [
           styles.tabBar,
           {
-            bottom: 14 + insets.bottom,
-            height: 74,
+            bottom: 0,
+            height: 74 + insets.bottom,
+            paddingBottom: insets.bottom,
+            backgroundColor: colors.tabBar,
+            borderColor: colors.tabBarBorder,
           },
         ],
       }}
@@ -44,6 +49,7 @@ export default function TabsLayout() {
             <TabIcon
               name={focused ? "home" : "home-outline"}
               focused={focused}
+              colors={colors}
             />
           ),
         }}
@@ -57,6 +63,7 @@ export default function TabsLayout() {
             <TabIcon
               name={focused ? "calendar" : "calendar-outline"}
               focused={focused}
+              colors={colors}
             />
           ),
         }}
@@ -69,7 +76,7 @@ export default function TabsLayout() {
           tabBarLabel: () => null,
           tabBarItemStyle: isCamera ? styles.cameraItemHidden : styles.cameraItem,
           tabBarIcon: ({ focused }) =>
-            isCamera ? null : <CameraTabIcon focused={focused} />,
+            isCamera ? null : <CameraTabIcon focused={focused} colors={colors} />,
         }}
       />
 
@@ -81,6 +88,7 @@ export default function TabsLayout() {
             <TabIcon
               name={focused ? "barbell" : "barbell-outline"}
               focused={focused}
+              colors={colors}
             />
           ),
         }}
@@ -94,6 +102,7 @@ export default function TabsLayout() {
             <TabIcon
               name={focused ? "person" : "person-outline"}
               focused={focused}
+              colors={colors}
             />
           ),
         }}
@@ -102,23 +111,23 @@ export default function TabsLayout() {
   );
 }
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
+function TabIcon({ name, focused, colors }: { name: string; focused: boolean; colors: any }) {
   return (
     <View style={styles.iconContainer}>
       {focused && <View style={styles.iconPill} />}
       <Ionicons
         name={name as any}
         size={22}
-        color={focused ? "#171C1D" : "#686868"}
+        color={focused ? colors.iconHighlight : colors.iconDefault}
       />
     </View>
   );
 }
 
-function CameraTabIcon({ focused }: { focused: boolean }) {
+function CameraTabIcon({ focused, colors }: { focused: boolean; colors: any }) {
   return (
     <View style={styles.cameraWrap}>
-      <View style={[styles.cameraRing, focused && styles.cameraRingActive]}>
+      <View style={[styles.cameraRing, focused && styles.cameraRingActive, { borderColor: colors.isDark ? '#888888' : '#525252' }]}>
         <View style={[styles.cameraInner, focused && styles.cameraInnerActive]}>
           <Ionicons
             name="camera"
@@ -134,22 +143,23 @@ function CameraTabIcon({ focused }: { focused: boolean }) {
 const styles = StyleSheet.create({
   tabBar: {
     position: "absolute",
-    left: 14,
-    right: 14,
+    left: 0,
+    right: 0,
     height: 74,
-    borderRadius: 24,
-    backgroundColor: "#ccecff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     borderTopWidth: 0,
     paddingBottom: 8,
     paddingTop: 8,
     shadowColor: "#171C1D",
     shadowOpacity: 0.1,
     shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: -4 },
     elevation: 12,
-    // Subtle border to separate from white screen bg
     borderWidth: 1,
-    borderColor: "#EFEFEF",
+    borderBottomWidth: 0,
   },
 
   iconContainer: {
@@ -197,7 +207,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 3,
-    borderColor: "#525252",
     shadowColor: "#171C1D",
     shadowOpacity: 0.12,
     shadowRadius: 12,

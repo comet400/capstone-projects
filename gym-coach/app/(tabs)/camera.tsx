@@ -174,6 +174,14 @@ export default function CameraScreen() {
     async (data: any, uri: string) => {
       const report = data?.report ?? data;
 
+      // Attach annotated skeleton frame to report for DB persistence
+      const annotatedFrame = data?.annotated_frame ?? null;
+      const annotatedGif = data?.annotated_gif ?? null;
+      if (report && typeof report === "object") {
+        if (annotatedFrame) report.annotated_frame = annotatedFrame;
+        if (annotatedGif) report.annotated_gif = annotatedGif;
+      }
+
       // Generate thumbnail for DB storage (base64 JPEG, ~60% quality)
       let thumbnailBase64: string | null = null;
       try {

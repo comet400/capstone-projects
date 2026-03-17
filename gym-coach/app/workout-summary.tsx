@@ -362,6 +362,8 @@ export default function WorkoutSummaryScreen() {
 
   const [report, setReport] = useState<AnalysisReport>(DEMO_REPORT);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [annotatedFrame, setAnnotatedFrame] = useState<string | null>(null);
+  const [annotatedGif, setAnnotatedGif] = useState<string | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -402,6 +404,16 @@ export default function WorkoutSummaryScreen() {
         if (data.thumbnail_base64) {
           setThumbnail(`data:image/jpeg;base64,${data.thumbnail_base64}`);
         }
+        if (data.annotated_frame) {
+          setAnnotatedFrame(`data:image/jpeg;base64,${data.annotated_frame}`);
+        } else if (data.report?.annotated_frame) {
+          setAnnotatedFrame(`data:image/jpeg;base64,${data.report.annotated_frame}`);
+        }
+        // Animated GIF
+        const gif = data.annotated_gif ?? data.report?.annotated_gif;
+        if (gif) {
+          setAnnotatedGif(`data:image/gif;base64,${gif}`);
+        }
       } catch (e: any) {
         console.warn("[WorkoutSummary] DB fetch failed:", e);
         setLoadError("Could not load this workout.");
@@ -424,6 +436,15 @@ export default function WorkoutSummaryScreen() {
           setReport(parsed);
         } else {
           console.warn("[WorkoutSummary] Invalid report structure in params");
+        }
+        // Extract annotated skeleton frame from top-level result
+        if (raw.annotated_frame) {
+          setAnnotatedFrame(`data:image/jpeg;base64,${raw.annotated_frame}`);
+        }
+        // Extract animated GIF
+        const gif = raw.annotated_gif ?? raw.report?.annotated_gif;
+        if (gif) {
+          setAnnotatedGif(`data:image/gif;base64,${gif}`);
         }
       } catch (e) {
         console.warn("[WorkoutSummary] Failed to parse report param:", e);
@@ -614,6 +635,37 @@ export default function WorkoutSummaryScreen() {
             })}
           </View>
         </View>
+
+        {/* ── FORM ANALYSIS — Animated GIF or Static Skeleton ─────────── */}
+        {(annotatedGif || annotatedFrame) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>FORM ANALYSIS</Text>
+            <View style={styles.skeletonCard}>
+              <Image
+                source={{ uri: annotatedGif ?? annotatedFrame! }}
+                style={styles.skeletonImage}
+                resizeMode="contain"
+              />
+              {annotatedGif && (
+                <Text style={styles.skeletonCaption}>Worst-scoring rep · looping</Text>
+              )}
+              <View style={styles.skeletonLegend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: "#4ADE80" }]} />
+                  <Text style={styles.legendText}>Good form</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: "#FACC15" }]} />
+                  <Text style={styles.legendText}>Borderline</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: "#F87171" }]} />
+                  <Text style={styles.legendText}>Needs work</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* ── ISSUES ───────────────────────────────────────────────────── */}
         {issues.overall.length > 0 && issues.overall[0] !== "N/A" && (
@@ -984,6 +1036,50 @@ const styles = StyleSheet.create({
   actionSecondaryText: {
     color: "rgba(255,255,255,0.5)",
     fontSize: 15,
+    fontWeight: "600",
+  },
+
+  // Skeleton overlay
+  skeletonCard: {
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    overflow: "hidden",
+  },
+  skeletonImage: {
+    width: "100%",
+    aspectRatio: 4 / 3,
+    backgroundColor: "#000",
+  },
+  skeletonCaption: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+    paddingTop: 8,
+    letterSpacing: 0.5,
+  },
+  skeletonLegend: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 11,
     fontWeight: "600",
   },
 });

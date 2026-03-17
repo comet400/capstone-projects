@@ -2,7 +2,7 @@
 Data models for exercise analysis
 """
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List, Dict, Optional
 from enum import Enum
 
 
@@ -46,6 +46,8 @@ class ExerciseAnalysis:
     overall_issues: List[str] = field(default_factory=list)
     video_fps: float = 30.0
     total_frames: int = 0
+    annotated_frame: Optional[str] = None  # base64-encoded JPEG with skeleton overlay
+    annotated_gif: Optional[str] = None     # base64-encoded animated GIF with skeleton overlay
     
     @property
     def duration_seconds(self) -> float:
