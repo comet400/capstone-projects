@@ -16,6 +16,7 @@ import { useRouter, Link } from "expo-router";
 import axios from "axios";
 import { API_BASE_URL } from "@/app/config/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTheme } from "@/app/context/ThemeContext";
 
 // Password strength meter
 function PasswordStrength({ password }: { password: string }) {
@@ -136,6 +137,7 @@ const fieldStyles = StyleSheet.create({
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -210,10 +212,10 @@ export default function RegisterScreen() {
     confirmPassword.length > 0 && password !== confirmPassword;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       {/* Bg blobs */}
       <View style={styles.bgBlob1} />
-      <View style={styles.bgBlob2} />
+      <View style={[styles.bgBlob2, { backgroundColor: colors.isDark ? '#2AA8FF' : '#171C1D' }]} />
       <View style={styles.bgDot1} />
       <View style={styles.bgDot2} />
 
@@ -236,7 +238,7 @@ export default function RegisterScreen() {
               },
             ]}
           >
-            <Text style={styles.title}>Let's go{"\n"}Gym!</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Let's go{"\n"}Gym!</Text>
             <Animated.View
             />
           </Animated.View>
@@ -312,35 +314,35 @@ export default function RegisterScreen() {
             {/* Sign up button */}
             <Animated.View style={{ transform: [{ scale: btnScale }] }}>
               <Pressable
-                style={[styles.button, loading && styles.buttonLoading]}
+                style={[styles.button, { backgroundColor: colors.isDark ? '#2AA8FF' : '#171C1D' }, loading && styles.buttonLoading]}
                 onPress={handleRegister}
                 onPressIn={onPressIn}
                 onPressOut={onPressOut}
                 disabled={loading}
               >
                 <View style={styles.buttonInner}>
-                  <Text style={styles.buttonText}>
+                  <Text style={[styles.buttonText, { color: colors.isDark ? '#000' : '#fff' }]}>
                     {loading ? "Creating Account" : "Create Account"}
                   </Text>
                   {!loading && (
-                    <Text style={styles.buttonArrow}>→</Text>
+                    <Text style={[styles.buttonArrow, { color: colors.isDark ? '#000' : '#2AA8FF' }]}>→</Text>
                   )}
-                  {loading && <Text style={styles.loadingDots}>...</Text>}
+                  {loading && <Text style={[styles.loadingDots, { color: colors.isDark ? '#000' : '#2AA8FF' }]}>...</Text>}
                 </View>
               </Pressable>
             </Animated.View>
 
             {/* Divider */}
             <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>HAVE AN ACCOUNT?</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>HAVE AN ACCOUNT?</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
             {/* Login link */}
             <Link href="/login" asChild>
-              <Pressable style={styles.loginButton}>
-                <Text style={styles.loginText}>Log In</Text>
+              <Pressable style={[styles.loginButton, { borderColor: colors.border }]}>
+                <Text style={[styles.loginText, { color: colors.text }]}>Log In</Text>
               </Pressable>
             </Link>
           </Animated.View>

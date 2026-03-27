@@ -15,6 +15,7 @@ import * as Notifications from "expo-notifications";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy";
 import * as VideoThumbnails from "expo-video-thumbnails";
+import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/app/config/api";
 
@@ -312,6 +313,26 @@ export default function CameraScreen() {
     }
   };
 
+  const handlePickVideo = async () => {
+    if (!selectedExercise) {
+      setSettingsVisible(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["videos"],
+        quality: 1,
+        videoMaxDuration: MAX_RECORDING_SECONDS,
+      });
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await uploadVideo(result.assets[0].uri, selectedExercise);
+    } catch (err: any) {
+      Alert.alert("Upload Error", err?.message ?? "Could not pick video.");
+    }
+  };
+
   const pollForResult = async (
     jobId: string,
     uri: string,
@@ -512,7 +533,7 @@ export default function CameraScreen() {
       {/* ── Controls ── */}
       <View style={styles.controls}>
         <Text style={styles.instruction}>
-          {isRecording ? "Recording… Tap to stop" : "Tap to start recording"}
+          {isRecording ? "Recording… Tap to stop" : "Record or upload a video"}
         </Text>
 
         <View style={styles.buttonRow}>
@@ -568,7 +589,16 @@ export default function CameraScreen() {
               <Ionicons name="trash-outline" size={22} color="#FF3B30" />
             </Pressable>
           ) : (
-            <View style={{ width: 52 }} />
+            <Pressable
+              style={[styles.smallButton, !selectedExercise && styles.smallButtonDisabled]}
+              onPress={handlePickVideo}
+            >
+              <Ionicons
+                name="cloud-upload-outline"
+                size={22}
+                color={!selectedExercise ? "#D0D0D0" : "#171C1D"}
+              />
+            </Pressable>
           )}
         </View>
 

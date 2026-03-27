@@ -108,8 +108,7 @@ export default function ActivitiesScreen() {
 
   // Handlers
   const handleMusclePress = (muscle: string) => {
-    // Navigate to exercise list filtered by muscle
-    console.log(`Filter by ${muscle}`);
+    router.push("/(tabs)/explore");
   };
 
   const handleSuggestionPress = () => {

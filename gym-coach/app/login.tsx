@@ -16,11 +16,13 @@ import { Link, useRouter } from "expo-router";
 import axios from "axios";
 import { API_BASE_URL } from "@/app/config/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTheme } from "@/app/context/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -122,10 +124,10 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       {/* Decorative background shapes */}
       <View style={styles.bgAccentTop} />
-      <View style={styles.bgAccentBottom} />
+      <View style={[styles.bgAccentBottom, { backgroundColor: colors.isDark ? '#2AA8FF' : '#171C1D' }]} />
       <View style={styles.bgDot1} />
       <View style={styles.bgDot2} />
 
@@ -144,7 +146,7 @@ export default function LoginScreen() {
               },
             ]}
           >
-            <Text style={styles.title}>Welcome{"\n"}Back.</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Welcome{"\n"}Back.</Text>
 
             <Animated.View
               style={[
@@ -169,17 +171,17 @@ export default function LoginScreen() {
           >
             {/* Email Field */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>EMAIL</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>EMAIL</Text>
               <View
                 style={[
                   styles.inputWrapper,
-                  emailFocused && styles.inputWrapperFocused,
+                  { backgroundColor: colors.surface, borderColor: emailFocused ? '#2AA8FF' : 'transparent' },
                 ]}
               >
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   placeholder="you@email.com"
-                  placeholderTextColor="#ABABAB"
+                  placeholderTextColor={colors.textSecondary}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -193,17 +195,17 @@ export default function LoginScreen() {
 
             {/* Password Field */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>PASSWORD</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>PASSWORD</Text>
               <View
                 style={[
                   styles.inputWrapper,
-                  passwordFocused && styles.inputWrapperFocused,
+                  { backgroundColor: colors.surface, borderColor: passwordFocused ? '#2AA8FF' : 'transparent' },
                 ]}
               >
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text }]}
                   placeholder="••••••••"
-                  placeholderTextColor="#ABABAB"
+                  placeholderTextColor={colors.textSecondary}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
@@ -222,7 +224,7 @@ export default function LoginScreen() {
             {/* Login Button */}
             <Animated.View style={{ transform: [{ scale: btnScale }] }}>
               <Pressable
-                style={[styles.button, loading && styles.buttonLoading]}
+                style={[styles.button, { backgroundColor: colors.isDark ? '#2AA8FF' : '#171C1D' }, loading && styles.buttonLoading]}
                 onPress={handleLogin}
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
@@ -230,13 +232,13 @@ export default function LoginScreen() {
               >
                 {loading ? (
                   <View style={styles.loadingRow}>
-                    <Text style={styles.buttonText}>Logging in</Text>
-                    <Text style={styles.loadingDots}>...</Text>
+                    <Text style={[styles.buttonText, { color: colors.isDark ? '#000' : '#fff' }]}>Logging in</Text>
+                    <Text style={[styles.loadingDots, { color: colors.isDark ? '#000' : '#2AA8FF' }]}>...</Text>
                   </View>
                 ) : (
                   <View style={styles.buttonInner}>
-                    <Text style={styles.buttonText}>Log In</Text>
-                    <Text style={styles.buttonArrow}>→</Text>
+                    <Text style={[styles.buttonText, { color: colors.isDark ? '#000' : '#fff' }]}>Log In</Text>
+                    <Text style={[styles.buttonArrow, { color: colors.isDark ? '#000' : '#2AA8FF' }]}>→</Text>
                   </View>
                 )}
               </Pressable>
@@ -244,15 +246,15 @@ export default function LoginScreen() {
 
             {/* Divider */}
             <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>NEW HERE?</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <Text style={[styles.dividerText, { color: colors.textSecondary }]}>NEW HERE?</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             </View>
 
             {/* Sign up */}
             <Link href="/register" asChild>
-              <Pressable style={styles.signupButton}>
-                <Text style={styles.signupText}>Create an Account</Text>
+              <Pressable style={[styles.signupButton, { borderColor: colors.border }]}>
+                <Text style={[styles.signupText, { color: colors.text }]}>Create an Account</Text>
               </Pressable>
             </Link>
           </Animated.View>

@@ -22,11 +22,12 @@ router.get("/overview", authMiddleware, async (req, res) => {
   try {
     const userId = req.userId;
 
-    // 1) Fetch completed sessions for the current week
+    // 1) Fetch completed sessions for the current week from workout_sessions
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Sunday
+    weekStart.setHours(0, 0, 0, 0);
     const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6); // Saturday
+    weekEnd.setDate(weekEnd.getDate() + 7);
 
     const sessionsRes = await pool.query(
       `SELECT * FROM workout_sessions 
@@ -38,7 +39,6 @@ router.get("/overview", authMiddleware, async (req, res) => {
 
     const sessions = sessionsRes.rows;
 
-    // 2) Calculate total minutes & workouts
     let totalMinutes = 0;
     let totalCalories = 0;
 
@@ -48,12 +48,27 @@ router.get("/overview", authMiddleware, async (req, res) => {
         const durationMin = Math.floor(durationMs / 60000);
         totalMinutes += durationMin;
       }
-
-      // calories column in session? if not, fallback 300 per workout
       totalCalories += session.calories_burned ?? 300;
     }
 
-    const workoutsCompleted = sessions.length;
+    let workoutsCompleted = sessions.length;
+
+    // 2) Also count from the workouts table (AI-analyzed workouts)
+    try {
+      const workoutsRes = await pool.query(
+        `SELECT duration_seconds FROM workouts
+         WHERE user_id = $1
+           AND created_at BETWEEN $2 AND $3`,
+        [userId, weekStart, weekEnd]
+      );
+      workoutsCompleted += workoutsRes.rows.length;
+      for (const w of workoutsRes.rows) {
+        totalMinutes += Math.round((w.duration_seconds || 0) / 60);
+        totalCalories += Math.round(((w.duration_seconds || 0) / 60) * 5);
+      }
+    } catch (_e) {
+      // workouts table may not exist in some setups, ignore
+    }
 
     // 3) Fetch weekly goal and streak from user_metrics
     const metricsRes = await pool.query(

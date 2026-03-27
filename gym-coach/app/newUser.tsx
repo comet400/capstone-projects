@@ -20,6 +20,7 @@ import axios from "axios";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { API_BASE_URL } from "@/app/config/api";
+import { useTheme } from "@/app/context/ThemeContext";
 
 // ── Step indicator ──────────────────────────────────────────────
 function StepDots({ total, current }: { total: number; current: number }) {
@@ -161,6 +162,7 @@ const sectionStyles = StyleSheet.create({
 // ── Main screen ─────────────────────────────────────────────────
 export default function NewUserScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
 
   const [dateOfBirth, setDateOfBirth] = useState<Date | undefined>(undefined);
   const [tempDate, setTempDate] = useState<Date | undefined>(undefined);
@@ -248,10 +250,10 @@ export default function NewUserScreen() {
   const stepIndex = Math.min(Math.floor((filledCount / 5) * 4), 3);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       {/* Bg blobs */}
       <View style={styles.bgBlob1} />
-      <View style={styles.bgBlob2} />
+      <View style={[styles.bgBlob2, { backgroundColor: colors.isDark ? '#2AA8FF' : '#171C1D' }]} />
       <View style={styles.bgDot1} />
       <View style={styles.bgDot2} />
 
@@ -266,7 +268,7 @@ export default function NewUserScreen() {
             <Animated.View
               style={[styles.headerBlock, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}
             >
-              <Text style={styles.title}>Build Your{"\n"}Profile.</Text>
+              <Text style={[styles.title, { color: colors.text }]}>Build Your{"\n"}Profile.</Text>
             </Animated.View>
 
             {/* Progress dots */}
@@ -394,19 +396,19 @@ export default function NewUserScreen() {
               {/* Submit */}
               <Animated.View style={{ transform: [{ scale: btnScale }] }}>
                 <Pressable
-                  style={[styles.submitBtn, loading && styles.submitBtnLoading]}
+                  style={[styles.submitBtn, { backgroundColor: colors.isDark ? '#2AA8FF' : '#171C1D' }, loading && styles.submitBtnLoading]}
                   onPress={handleSubmit}
                   onPressIn={onPressIn}
                   onPressOut={onPressOut}
                   disabled={loading}
                 >
                   <View style={styles.submitInner}>
-                    <Text style={styles.submitText}>
+                    <Text style={[styles.submitText, { color: colors.isDark ? '#000' : '#fff' }]}>
                       {loading ? "Saving Profile" : "Complete Profile"}
                     </Text>
                     {!loading
-                      ? <Text style={styles.submitArrow}>→</Text>
-                      : <Text style={styles.submitDots}>...</Text>
+                      ? <Text style={[styles.submitArrow, { color: colors.isDark ? '#000' : '#2AA8FF' }]}>→</Text>
+                      : <Text style={[styles.submitDots, { color: colors.isDark ? '#000' : '#2AA8FF' }]}>...</Text>
                     }
                   </View>
                 </Pressable>
