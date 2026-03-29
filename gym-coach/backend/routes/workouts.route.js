@@ -98,6 +98,108 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/workouts/stats — aggregated stats for progress & highlights
+router.get("/stats", requireAuth, async (req, res) => {
+  let client;
+  try {
+    client = await pool.connect();
+
+    // All workouts for this user
+    const allRes = await client.query(
+      `SELECT id, exercise_type, duration_seconds, overall_score,
+              grade, total_reps, performance_tier, created_at
+       FROM workouts
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [req.userId]
+    );
+    const rows = allRes.rows;
+
+    if (rows.length === 0) {
+      return res.json({
+        totalWorkouts: 0,
+        totalMinutes: 0,
+        totalCalories: 0,
+        bestScore: 0,
+        avgScore: 0,
+        totalReps: 0,
+        totalHours: 0,
+        exerciseBreakdown: [],
+        weeklyWorkouts: [],
+        recentScores: [],
+      });
+    }
+
+    const totalWorkouts = rows.length;
+    const totalSeconds = rows.reduce((s, r) => s + (r.duration_seconds || 0), 0);
+    const totalMinutes = Math.round(totalSeconds / 60);
+    const totalHours = +(totalSeconds / 3600).toFixed(1);
+    // Rough calorie estimate: ~5 kcal per minute of exercise
+    const totalCalories = Math.round(totalMinutes * 5);
+    const bestScore = Math.round(Math.max(...rows.map((r) => r.overall_score || 0)));
+    const avgScore = Math.round(
+      rows.reduce((s, r) => s + (r.overall_score || 0), 0) / totalWorkouts
+    );
+    const totalReps = rows.reduce((s, r) => s + (r.total_reps || 0), 0);
+
+    // Exercise breakdown: count per exercise type
+    const exerciseMap = {};
+    for (const r of rows) {
+      const key = r.exercise_type || "unknown";
+      exerciseMap[key] = (exerciseMap[key] || 0) + 1;
+    }
+    const exerciseBreakdown = Object.entries(exerciseMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Weekly workout counts (last 4 weeks)
+    const weeklyWorkouts = [];
+    for (let i = 3; i >= 0; i--) {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() - i * 7);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 7);
+      const count = rows.filter((r) => {
+        const d = new Date(r.created_at);
+        return d >= weekStart && d < weekEnd;
+      }).length;
+      weeklyWorkouts.push({
+        weekLabel: weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        count,
+      });
+    }
+
+    // Recent 10 scores for trend
+    const recentScores = rows
+      .slice(0, 10)
+      .reverse()
+      .map((r) => ({
+        score: Math.round(r.overall_score || 0),
+        date: r.created_at,
+        exercise: r.exercise_type,
+      }));
+
+    res.json({
+      totalWorkouts,
+      totalMinutes,
+      totalCalories,
+      totalHours,
+      bestScore,
+      avgScore,
+      totalReps,
+      exerciseBreakdown,
+      weeklyWorkouts,
+      recentScores,
+    });
+  } catch (err) {
+    console.error("Workout stats error:", err);
+    res.status(500).json({ message: "Failed to compute stats" });
+  } finally {
+    if (client) client.release();
+  }
+});
+
 // GET /api/workouts/:id — single workout with full report
 router.get("/:id", requireAuth, async (req, res) => {
   let client;

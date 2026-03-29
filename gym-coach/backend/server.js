@@ -17,7 +17,6 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use("/api/analyze", analyzeRoute);
 app.use("/api/auth", authRoute);
-app.use("/api/auth", authRoute);
 app.use("/api/profile", profileRoute);
 app.use("/api/me", meRoute);
 app.use("/api/workout-plan", workoutPlanRoute);

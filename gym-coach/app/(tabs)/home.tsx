@@ -13,6 +13,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/app/config/api";
 import { useTheme } from "@/app/context/ThemeContext";
+
 import { useAuth } from "@/app/context/AuthContext";
 import {
   type SplitId,
@@ -27,6 +28,12 @@ import {
   getGoalDefinition,
 } from "@/app/lib/split-cycle";
 
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
 type GeneratedPlanDayExercise = {
   exercise_id: number;
   name: string;
@@ -75,6 +82,11 @@ export default function HomeScreen() {
   } | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
+    const [recentWorkout, setRecentWorkout] = useState<{
+    exercise_type: string;
+    duration_seconds: number;
+    created_at: string;
+  } | null>(null);
 
   const splitId: SplitId = (user?.workout_split as SplitId) || (authUser?.workout_split as SplitId) || "ppl";
   const goalId: GoalId = (user?.fitness_goal as GoalId) || (authUser?.fitness_goal as GoalId) || "gain_muscle";
@@ -168,6 +180,27 @@ export default function HomeScreen() {
       }
     };
     fetchOverview();
+    fetchUserAndPlan();
+
+    // Fetch most recent workout for the Recent Activity card
+    (async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) return;
+        const res = await axios.get(`${API_BASE_URL}/api/workouts`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const all = Array.isArray(res.data) ? res.data : [];
+        if (all.length > 0) {
+          const sorted = all.sort(
+            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+          setRecentWorkout(sorted[0]);
+        }
+      } catch (_e) {
+        // silently fail — card will show fallback
+      }
+    })();
   }, []);
 
   useFocusEffect(
@@ -218,7 +251,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.greeting, { color: colors.text }]}>
-            Good morning, {user?.full_name?.split(" ")[0] || authUser?.full_name?.split(" ")[0] || "User"}
+            {getGreeting()}, {user?.full_name?.split(" ")[0] || "User"}
           </Text>
           <Text style={[styles.subGreeting, { color: colors.textSecondary }]}>
             Let's crush your goals today
@@ -293,7 +326,7 @@ export default function HomeScreen() {
               </View>
             </View>
             <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-              weekly Progress
+              Weekly Progress
             </Text>
           </View>
 
@@ -427,10 +460,16 @@ export default function HomeScreen() {
         >
           <View style={styles.activityPreviewContent}>
             <Text style={[styles.activityPreviewTitle, { color: colors.text }]}>
-              Upper Body Strength
+              {recentWorkout
+                ? recentWorkout.exercise_type
+                    .replace(/_/g, " ")
+                    .replace(/\b\w/g, (l) => l.toUpperCase())
+                : "No recent activity"}
             </Text>
             <Text style={[styles.activityPreviewMeta, { color: colors.textSecondary }]}>
-              45 min · 320 kcal · Today
+              {recentWorkout
+                ? `${Math.round(recentWorkout.duration_seconds / 60)} min · ${new Date(recentWorkout.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                : "Complete a workout to see it here"}
             </Text>
           </View>
           <Text style={styles.activityArrow}>→</Text>
@@ -474,11 +513,6 @@ export default function HomeScreen() {
             <Text style={styles.cardLink}>View full week</Text>
           </Pressable>
         </View>
-        <Pressable
-          style={styles.weekPlanRow}
-          onPress={() => router.push("/week-plan")}
-        >
-        </Pressable>
       </View>
 
       {/* Recommended For You */}

@@ -108,8 +108,7 @@ export default function ActivitiesScreen() {
 
   // Handlers
   const handleMusclePress = (muscle: string) => {
-    // TODO: Navigate to exercise list filtered by muscle
-    console.log(`Filter by ${muscle}`);
+    router.push("/(tabs)/explore");
   };
 
   const handleSuggestionPress = () => {
@@ -142,7 +141,7 @@ export default function ActivitiesScreen() {
       <Text style={[styles.title, { color: colors.text }]}>Activities</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Choose what to train</Text>
 
-      {/* Muscle Groups (static for now, but pressable) */}
+      {/* Muscle Groups */}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Muscle Groups</Text>
       <View style={styles.grid}>
         <MuscleCard label="Biceps" icon="arm-flex" colors={colors} onPress={() => handleMusclePress("Biceps")} />
@@ -186,7 +185,7 @@ export default function ActivitiesScreen() {
             key={workout.id}
             title={workout.exercise_type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
             duration={`${Math.round(workout.duration_seconds / 60)} min`}
-            calories="—" // Not available from this endpoint; could be added later
+            calories="—" // Not available from this endpoint;
             day={new Date(workout.created_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
             colors={colors}
             onPress={() => router.push({ pathname: "/workout-summary", params: { workoutId: workout.id } })}
@@ -194,7 +193,7 @@ export default function ActivitiesScreen() {
         ))
       )}
 
-      {/* Suggested For You – based on tomorrow's PPL */}
+      {/* Suggested For u*/}
       <Text style={[styles.sectionTitle, { color: colors.text }]}>Suggested For You</Text>
       <Pressable
         style={[styles.suggestionCard, { backgroundColor: colors.surface }]}

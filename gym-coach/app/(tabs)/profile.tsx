@@ -15,6 +15,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import { useTheme } from "@/app/context/ThemeContext";
 import { API_BASE_URL } from "@/app/config/api";
 import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width } = Dimensions.get("window");
 
@@ -142,22 +143,39 @@ export default function ProfileScreen() {
   const [streak, setStreak] = useState<number | null>(null);
   const [formScore, setFormScore] = useState<number | null>(null);
 
-  // Fetch dashboard overview stats
+  // Fetch dashboard overview stats + form score
   useEffect(() => {
-    if (!token) return;
-    axios
-      .get(`${API_BASE_URL}/api/dashboard/overview`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res: { data: { workoutsCompleted?: number; streak?: number } }) => {
-        setWorkoutsCompleted(res.data.workoutsCompleted ?? 0);
-        setStreak(res.data.streak ?? 0);
-      })
-      .catch((_err: unknown) => {
-        // Fallback to zeros on error
+    const fetchStats = async () => {
+      const storedToken = token || (await AsyncStorage.getItem("token"));
+      if (!storedToken) return;
+
+      try {
+        const overviewRes = await axios.get(`${API_BASE_URL}/api/dashboard/overview`, {
+          headers: { Authorization: `Bearer ${storedToken}` },
+        });
+        setWorkoutsCompleted(overviewRes.data.workoutsCompleted ?? 0);
+        setStreak(overviewRes.data.streak ?? 0);
+      } catch (_err) {
         setWorkoutsCompleted(0);
         setStreak(0);
-      });
+      }
+
+      // Fetch workouts to compute average form score + total count
+      try {
+        const workoutsRes = await fetch(`${API_BASE_URL}/api/workouts`, {
+          headers: { Authorization: `Bearer ${storedToken}` },
+        });
+        const data = await workoutsRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const avg = Math.round(
+            data.reduce((s: number, w: any) => s + (w.overall_score ?? 0), 0) / data.length
+          );
+          setFormScore(avg);
+          setWorkoutsCompleted(data.length);
+        }
+      } catch (_e) {}
+    };
+    fetchStats();
   }, [token]);
 
   const headerFade = useRef(new Animated.Value(0)).current;
