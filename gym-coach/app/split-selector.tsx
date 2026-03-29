@@ -76,12 +76,8 @@ export default function SplitSelectorScreen() {
       );
 
       updateUser({ workout_split: selected });
-
       await AsyncStorage.removeItem("split_week_plan");
-
-      Alert.alert("Split Updated", "Your training split has been updated. Your workout plan will regenerate.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      router.back();
     } catch (err: any) {
       console.error("Failed to save split:", err?.message ?? err);
       Alert.alert("Error", "Failed to save your training split. Please try again.");

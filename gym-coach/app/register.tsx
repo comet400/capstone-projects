@@ -341,7 +341,7 @@ export default function RegisterScreen() {
 
             {/* Login link */}
             <Link href="/login" asChild>
-              <Pressable style={[styles.loginButton, { borderColor: colors.border }]}>
+              <Pressable style={{ ...styles.loginButton, borderColor: colors.border }}>
                 <Text style={[styles.loginText, { color: colors.text }]}>Log In</Text>
               </Pressable>
             </Link>

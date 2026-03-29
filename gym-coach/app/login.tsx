@@ -253,7 +253,7 @@ export default function LoginScreen() {
 
             {/* Sign up */}
             <Link href="/register" asChild>
-              <Pressable style={[styles.signupButton, { borderColor: colors.border }]}>
+              <Pressable style={{ ...styles.signupButton, borderColor: colors.border }}>
                 <Text style={[styles.signupText, { color: colors.text }]}>Create an Account</Text>
               </Pressable>
             </Link>

@@ -73,10 +73,7 @@ export default function GoalSelectorScreen() {
 
       updateUser({ fitness_goal: selected });
       await AsyncStorage.removeItem("split_week_plan");
-
-      Alert.alert("Goal Updated", "Your fitness goal has been updated. Your workout plan will regenerate.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      router.back();
     } catch (err: any) {
       console.error("Failed to save goal:", err?.message ?? err);
       Alert.alert("Error", "Failed to save your fitness goal. Please try again.");

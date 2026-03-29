@@ -34,6 +34,7 @@ function getGreeting(): string {
   if (h < 17) return "Good afternoon";
   return "Good evening";
 }
+
 type GeneratedPlanDayExercise = {
   exercise_id: number;
   name: string;
@@ -82,18 +83,25 @@ export default function HomeScreen() {
   } | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
-    const [recentWorkout, setRecentWorkout] = useState<{
+  const [recentWorkout, setRecentWorkout] = useState<{
     exercise_type: string;
     duration_seconds: number;
     created_at: string;
   } | null>(null);
 
-  const splitId: SplitId = (user?.workout_split as SplitId) || (authUser?.workout_split as SplitId) || "ppl";
-  const goalId: GoalId = (user?.fitness_goal as GoalId) || (authUser?.fitness_goal as GoalId) || "gain_muscle";
+  const splitId: SplitId = (authUser?.workout_split as SplitId) || (user?.workout_split as SplitId) || "ppl";
+  const goalId: GoalId = (authUser?.fitness_goal as GoalId) || (user?.fitness_goal as GoalId) || "gain_muscle";
   const splitDef = getSplitDefinition(splitId);
   const goalDef = getGoalDefinition(goalId);
   const lastLoadedSplit = useRef<string | null>(null);
   const lastLoadedGoal = useRef<string | null>(null);
+
+  // Re-sync local user state when AuthContext changes (e.g. goal/split changed on another screen)
+  useEffect(() => {
+    if (authUser) {
+      setUser((prev: any) => prev ? { ...prev, fitness_goal: authUser.fitness_goal, workout_split: authUser.workout_split } : prev);
+    }
+  }, [authUser?.fitness_goal, authUser?.workout_split]);
 
   const loadData = useCallback(async (force = false) => {
     const token = await AsyncStorage.getItem("token");
@@ -180,7 +188,6 @@ export default function HomeScreen() {
       }
     };
     fetchOverview();
-    fetchUserAndPlan();
 
     // Fetch most recent workout for the Recent Activity card
     (async () => {
