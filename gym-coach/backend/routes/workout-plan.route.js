@@ -1,84 +1,82 @@
 const express = require("express");
 const { pool } = require("../db/connectPostgres.cjs");
 const jwt = require("jsonwebtoken");
+const {
+  SPLIT_TYPES,
+  matchesDayType,
+  getWeekSchedule,
+  getSplitDefinition,
+  getAllSplitTypes,
+  getGoalDefinition,
+  getGoalPrescription,
+  getAllGoalTypes,
+  buildDayExercises,
+} = require("../lib/split-definitions");
 
 const router = express.Router();
 
-// JWT auth middleware
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
-  console.log("Auth token received:", token);
   if (!token) return res.status(401).json({ message: "No token" });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.id;
-    console.log("Token decoded successfully:", decoded);
     next();
   } catch (err) {
-    console.error("JWT error:", err.message);
     return res.status(401).json({ message: "Invalid token" });
   }
 };
 
-// Map fitness_level to a rank
 const fitnessLevelToRank = (level) => {
-  switch (level.toLowerCase()) {
+  switch ((level || "").toLowerCase()) {
     case "beginner": return 1;
     case "intermediate": return 2;
-    case "pro": return 3;
-    default: return 1; // default to intermediate if unknown
+    case "advanced": return 3;
+    default: return 1;
   }
 };
 
-// Default prescription per fitness level
 const getDefaultPrescription = (fitnessLevel) => {
   const level = (fitnessLevel && String(fitnessLevel).toLowerCase()) || "intermediate";
   switch (level) {
     case "beginner": return { sets: 3, reps: 10, durationSeconds: 45, restSeconds: 75 };
     case "advanced": return { sets: 5, reps: 5, durationSeconds: 60, restSeconds: 120 };
-    case "pro":
     default: return { sets: 4, reps: 8, durationSeconds: 50, restSeconds: 90 };
   }
 };
 
-// PPL: match target_muscles (and category/name) for each day type (case-insensitive)
-const PPL_KEYWORDS = {
-  Push: ["chest", "shoulder", "triceps", "pectoral", "deltoid", "pec"],
-  Pull: ["back", "biceps", "bicep", "trap", "lat", "rhomboid", "rear delt", "row", "pull", "chin"],
-  Legs: ["leg", "quad", "hamstring", "glute", "calf", "calves", "thigh", "hip", "squat", "lunge"],
-};
+router.get("/split-types", (_req, res) => {
+  res.json(getAllSplitTypes());
+});
 
-function matchesDayType(row, dayType) {
-  const keywords = PPL_KEYWORDS[dayType];
-  if (!keywords) return false;
-  const str = [row.target_muscles, row.category, row.name].filter(Boolean).join(" ").toLowerCase();
-  return keywords.some((k) => str.includes(k));
-}
+router.get("/goal-types", (_req, res) => {
+  res.json(getAllGoalTypes());
+});
 
-// When falling back (not enough keyword matches), use different slices so each day gets different exercises.
-const PPL_DAY_INDEX = { Push: 0, Pull: 1, Legs: 2 };
-
-// Allow clients to confirm the route exists (GET returns 405; use POST)
-router.get("/generate-week", (req, res) => {
+// POST /generate-week — build a weekly plan for the user's selected (or requested) split
+router.get("/generate-week", (_req, res) => {
   res.status(405).set("Allow", "POST").json({ error: "Method not allowed", use: "POST with Authorization" });
 });
 
 router.post("/generate-week", authMiddleware, async (req, res) => {
-  const { exercisesPerDay = 6 } = req.body || {};
-  if (exercisesPerDay <= 0) return res.status(400).json({ message: "exercisesPerDay must be > 0" });
+  const { splitType: reqSplit, goal: reqGoal } = req.body || {};
 
   const client = await pool.connect();
   try {
     const { rows: profileRows } = await client.query(
-      `SELECT user_id, fitness_level FROM users WHERE user_id = $1`,
+      `SELECT user_id, fitness_level, workout_split, fitness_goal FROM users WHERE user_id = $1`,
       [req.userId]
     );
     if (!profileRows.length) {
       return res.status(401).json({ message: "User not found", code: "USER_NOT_FOUND" });
     }
     const profile = profileRows[0];
-    const prescription = getDefaultPrescription(profile.fitness_level);
+    const splitId = reqSplit || profile.workout_split || "ppl";
+    const goalId  = reqGoal  || profile.fitness_goal  || "gain_muscle";
+    const split = getSplitDefinition(splitId);
+    const goalDef = getGoalDefinition(goalId);
+    const schedule = getWeekSchedule(splitId, profile.fitness_level);
 
     const { rows: allRows } = await client.query(
       `SELECT e.exercise_id, e.name, e.description, e.difficulty_level, e.target_muscles, ec.name AS category
@@ -87,47 +85,43 @@ router.post("/generate-week", authMiddleware, async (req, res) => {
     );
     if (!allRows.length) return res.status(400).json({ message: "No exercises found" });
 
-    const buildDay = (dayType) => {
-      const filtered = allRows.filter((r) => matchesDayType(r, dayType));
-      let chosen;
-      if (filtered.length >= exercisesPerDay) {
-        chosen = filtered.slice(0, exercisesPerDay);
-      } else {
-        const dayIndex = PPL_DAY_INDEX[dayType];
-        const start = (dayIndex * exercisesPerDay) % Math.max(allRows.length, 1);
-        chosen = [];
-        for (let i = 0; i < exercisesPerDay; i++) {
-          const idx = (start + i) % allRows.length;
-          chosen.push(allRows[idx]);
-        }
-      }
-      const exercises = chosen.map((ex) => ({
-        exercise_id: ex.exercise_id,
-        name: ex.name,
-        description: ex.description,
-        difficulty_level: ex.difficulty_level,
-        target_muscles: ex.target_muscles,
-        category: ex.category,
-        prescription: {
-          sets: prescription.sets,
-          reps: prescription.reps,
-          duration_seconds: prescription.durationSeconds,
-          rest_seconds: prescription.restSeconds,
-        },
-      }));
-      return {
-        plan_day_id: `ppl-${dayType.toLowerCase()}`,
-        day_number: dayType === "Push" ? 1 : dayType === "Pull" ? 2 : 3,
+    const uniqueDayTypes = [...new Set(schedule.filter((d) => d !== "Rest"))];
+
+    const days = {};
+    uniqueDayTypes.forEach((dayType, idx) => {
+      const { exercises: chosen, prescription: rx, estimatedMinutes } =
+        buildDayExercises(allRows, dayType, goalId, profile.fitness_level);
+
+      days[dayType] = {
+        plan_day_id: `split-${dayType.toLowerCase().replace(/[^a-z]/g, "-")}`,
+        day_number: idx + 1,
         day_label: dayType,
-        exercises,
+        estimatedMinutes,
+        exercises: chosen.map((ex) => ({
+          exercise_id: ex.exercise_id,
+          name: ex.name,
+          description: ex.description,
+          difficulty_level: ex.difficulty_level,
+          target_muscles: ex.target_muscles,
+          category: ex.category,
+          prescription: {
+            sets: rx.sets,
+            reps: rx.reps,
+            duration_seconds: rx.durationSeconds,
+            rest_seconds: rx.restSeconds,
+          },
+        })),
       };
-    };
+    });
 
-    const push = buildDay("Push");
-    const pull = buildDay("Pull");
-    const legs = buildDay("Legs");
-
-    return res.json({ push, pull, legs });
+    return res.json({
+      splitType: splitId,
+      splitName: split.name,
+      goal: goalId,
+      goalName: goalDef ? goalDef.name : "General",
+      schedule,
+      days,
+    });
   } catch (err) {
     console.error("Error generating week plan:", err);
     return res.status(500).json({ error: "Failed to generate week plan" });
@@ -136,52 +130,54 @@ router.post("/generate-week", authMiddleware, async (req, res) => {
   }
 });
 
+// POST /generate — full plan generation (persisted to DB)
 router.post("/generate", authMiddleware, async (req, res) => {
-  console.log("/generate route hit");
-  const { name, durationWeeks = 4, daysPerWeek = 3, exercisesPerDay = 6, week } = req.body || {};
-  console.log("Request body:", req.body);
-  console.log("Plan params -> name:", name, "durationWeeks:", durationWeeks, "daysPerWeek:", daysPerWeek, "exercisesPerDay:", exercisesPerDay);
+  const {
+    name,
+    durationWeeks = 4,
+    daysPerWeek = 3,
+    exercisesPerDay = 6,
+    week,
+    splitType: reqSplit,
+  } = req.body || {};
 
   if (week === true) {
-    const perDay = typeof exercisesPerDay === "number" && exercisesPerDay > 0 ? exercisesPerDay : 6;
     const client = await pool.connect();
     try {
       const { rows: profileRows } = await client.query(
-        `SELECT user_id, fitness_level FROM users WHERE user_id = $1`,
+        `SELECT user_id, fitness_level, workout_split, fitness_goal FROM users WHERE user_id = $1`,
         [req.userId]
       );
       if (!profileRows.length) {
-        client.release();
         return res.status(401).json({ message: "User not found", code: "USER_NOT_FOUND" });
       }
       const profile = profileRows[0];
-      const prescription = getDefaultPrescription(profile.fitness_level);
+      const splitId = reqSplit || profile.workout_split || "ppl";
+      const goalId  = req.body.goal || profile.fitness_goal || "gain_muscle";
+      const split = getSplitDefinition(splitId);
+      const goalDef = getGoalDefinition(goalId);
+      const schedule = getWeekSchedule(splitId, profile.fitness_level);
+
       const { rows: allRows } = await client.query(
         `SELECT e.exercise_id, e.name, e.description, e.difficulty_level, e.target_muscles, ec.name AS category
          FROM exercises e
          JOIN exercise_categories ec ON ec.category_id = e.category_id`
       );
       if (!allRows.length) {
-        client.release();
         return res.status(400).json({ message: "No exercises found" });
       }
-      const buildDay = (dayType) => {
-        const filtered = allRows.filter((r) => matchesDayType(r, dayType));
-        let chosen;
-        if (filtered.length >= perDay) {
-          chosen = filtered.slice(0, perDay);
-        } else {
-          const dayIndex = PPL_DAY_INDEX[dayType];
-          const start = (dayIndex * perDay) % Math.max(allRows.length, 1);
-          chosen = [];
-          for (let i = 0; i < perDay; i++) {
-            chosen.push(allRows[(start + i) % allRows.length]);
-          }
-        }
-        return {
-          plan_day_id: `ppl-${dayType.toLowerCase()}`,
-          day_number: dayType === "Push" ? 1 : dayType === "Pull" ? 2 : 3,
+
+      const uniqueDayTypes = [...new Set(schedule.filter((d) => d !== "Rest"))];
+      const days = {};
+      uniqueDayTypes.forEach((dayType, idx) => {
+        const { exercises: chosen, prescription: rx, estimatedMinutes } =
+          buildDayExercises(allRows, dayType, goalId, profile.fitness_level);
+
+        days[dayType] = {
+          plan_day_id: `split-${dayType.toLowerCase().replace(/[^a-z]/g, "-")}`,
+          day_number: idx + 1,
           day_label: dayType,
+          estimatedMinutes,
           exercises: chosen.map((ex) => ({
             exercise_id: ex.exercise_id,
             name: ex.name,
@@ -190,15 +186,23 @@ router.post("/generate", authMiddleware, async (req, res) => {
             target_muscles: ex.target_muscles,
             category: ex.category,
             prescription: {
-              sets: prescription.sets,
-              reps: prescription.reps,
-              duration_seconds: prescription.durationSeconds,
-              rest_seconds: prescription.restSeconds,
+              sets: rx.sets,
+              reps: rx.reps,
+              duration_seconds: rx.durationSeconds,
+              rest_seconds: rx.restSeconds,
             },
           })),
         };
-      };
-      return res.json({ push: buildDay("Push"), pull: buildDay("Pull"), legs: buildDay("Legs") });
+      });
+
+      return res.json({
+        splitType: splitId,
+        splitName: split.name,
+        goal: goalId,
+        goalName: goalDef ? goalDef.name : "General",
+        schedule,
+        days,
+      });
     } catch (err) {
       console.error("Error generating week (via /generate?week=true):", err);
       return res.status(500).json({ error: "Failed to generate week plan" });
@@ -214,82 +218,66 @@ router.post("/generate", authMiddleware, async (req, res) => {
 
   try {
     await client.query("BEGIN");
-    console.log("Connected to Postgres");
 
-    // 1) Load user profile
     const { rows: profileRows } = await client.query(
-      `SELECT user_id, date_of_birth, height_cm, weight_kg, fitness_level FROM users WHERE user_id = $1`,
+      `SELECT user_id, date_of_birth, height_cm, weight_kg, fitness_level, workout_split, fitness_goal FROM users WHERE user_id = $1`,
       [req.userId]
     );
-    console.log("Profile query result:", profileRows);
     if (!profileRows.length) {
       await client.query("ROLLBACK");
       return res.status(404).json({ message: "User not found" });
     }
     const profile = profileRows[0];
-    console.log("User profile loaded:", profile);
+    const splitId = reqSplit || profile.workout_split || "ppl";
+    const goalId  = req.body.goal || profile.fitness_goal || "gain_muscle";
+    const split = getSplitDefinition(splitId);
+    const goalDef = getGoalDefinition(goalId);
+    const schedule = getWeekSchedule(splitId, profile.fitness_level);
+    const activeDays = schedule.filter((d) => d !== "Rest");
+    const effectiveDaysPerWeek = Math.min(daysPerWeek, activeDays.length);
 
-    // 2) Get primary goal
     const { rows: goalRows } = await client.query(
       `SELECT ug.goal_id, fg.name AS goal_name FROM user_goals ug JOIN fitness_goals fg ON fg.goal_id = ug.goal_id WHERE ug.user_id = $1 ORDER BY ug.priority ASC, ug.set_at DESC LIMIT 1`,
       [req.userId]
     );
     const primaryGoal = goalRows[0] || null;
-    console.log("Primary goal query result:", goalRows);
 
-    // 3) Fetch candidate exercises
-    const totalExercisesNeeded = daysPerWeek * exercisesPerDay;
     const { rows: exerciseRows } = await client.query(
       `SELECT e.exercise_id, e.name, e.description, e.difficulty_level, e.target_muscles, ec.name AS category
        FROM exercises e
-       JOIN exercise_categories ec ON ec.category_id = e.category_id
-       LIMIT $1`,
-      [totalExercisesNeeded * 2] // fetch extra
+       JOIN exercise_categories ec ON ec.category_id = e.category_id`
     );
-    console.log("Exercises fetched:", exerciseRows.length);
-
     if (!exerciseRows.length) {
       await client.query("ROLLBACK");
       return res.status(400).json({ message: "No exercises found" });
     }
 
-    // 4) Slice exercises into days
-    const chosenExercises = exerciseRows.slice(0, totalExercisesNeeded);
-    const days = [];
-    for (let day = 0; day < daysPerWeek; day++) {
-      const start = day * exercisesPerDay;
-      const end = start + exercisesPerDay;
-      const dayExercises = chosenExercises.slice(start, end);
-      if (!dayExercises.length) break;
-      days.push({ day_number: day + 1, exercises: dayExercises });
-    }
-    console.log("Days prepared:", days.map(d => d.day_number));
-
-    // 5) Insert plan
-    const planName = name || (primaryGoal ? `AI ${primaryGoal.goal_name} Plan` : "AI Personalized Plan");
+    const goalLabel = goalDef ? goalDef.shortName : (primaryGoal ? primaryGoal.goal_name : "General");
+    const planName = name || `AI ${goalLabel} ${split.shortName} Plan`;
     const { rows: planRows } = await client.query(
       `INSERT INTO workout_plans (user_id, name, goal_id, duration_weeks, days_per_week, is_ai_generated)
        VALUES ($1,$2,$3,$4,$5,TRUE) RETURNING *`,
-      [req.userId, planName, primaryGoal?.goal_id || null, durationWeeks, daysPerWeek]
+      [req.userId, planName, primaryGoal?.goal_id || null, durationWeeks, effectiveDaysPerWeek]
     );
     const plan = planRows[0];
-    console.log("Workout plan created:", plan);
-
-    const prescription = getDefaultPrescription(profile.fitness_level);
     const responseDays = [];
 
-    for (const day of days) {
-      const dayLabel = `Day ${day.day_number}`;
+    const uniqueActiveDays = activeDays.slice(0, effectiveDaysPerWeek);
+
+    for (let dayIdx = 0; dayIdx < uniqueActiveDays.length; dayIdx++) {
+      const dayType = uniqueActiveDays[dayIdx];
+      const { exercises: chosen, prescription: rx, estimatedMinutes } =
+        buildDayExercises(exerciseRows, dayType, goalId, profile.fitness_level);
+
       const { rows: dayRows } = await client.query(
         `INSERT INTO workout_plan_days (plan_id, day_number, day_label) VALUES ($1,$2,$3) RETURNING *`,
-        [plan.plan_id, day.day_number, dayLabel]
+        [plan.plan_id, dayIdx + 1, dayType]
       );
       const planDay = dayRows[0];
 
       const dayExercisesResponse = [];
-      for (let i = 0; i < day.exercises.length; i++) {
-        const ex = day.exercises[i];
-
+      for (let i = 0; i < chosen.length; i++) {
+        const ex = chosen[i];
         try {
           const { rows: peRows } = await client.query(
             `INSERT INTO workout_plan_exercises
@@ -299,25 +287,19 @@ router.post("/generate", authMiddleware, async (req, res) => {
               planDay.plan_day_id,
               ex.exercise_id,
               i + 1,
-              prescription.sets,
-              prescription.reps,
-              prescription.durationSeconds,
-              prescription.restSeconds,
-              `Auto-generated for ${profile.fitness_level} level`
+              rx.sets,
+              rx.reps,
+              rx.durationSeconds,
+              rx.restSeconds,
+              `${goalDef ? goalDef.name : "General"} — ${profile.fitness_level} level`,
             ]
           );
-
-          if (!peRows[0]) {
-            console.warn("Plan exercise insert returned empty for exercise:", ex.exercise_id);
-          }
-
           const planExercise = peRows[0] || {
-            sets: prescription.sets,
-            reps: prescription.reps,
-            duration_seconds: prescription.durationSeconds,
-            rest_seconds: prescription.restSeconds
+            sets: rx.sets,
+            reps: rx.reps,
+            duration_seconds: rx.durationSeconds,
+            rest_seconds: rx.restSeconds,
           };
-
           dayExercisesResponse.push({
             exercise_id: ex.exercise_id,
             name: ex.name,
@@ -329,12 +311,11 @@ router.post("/generate", authMiddleware, async (req, res) => {
               sets: planExercise.sets,
               reps: planExercise.reps,
               duration_seconds: planExercise.duration_seconds,
-              rest_seconds: planExercise.rest_seconds
-            }
+              rest_seconds: planExercise.rest_seconds,
+            },
           });
         } catch (err) {
           console.error("Error inserting exercise", ex.exercise_id, err.message);
-          // fallback so frontend won't crash
           dayExercisesResponse.push({
             exercise_id: ex.exercise_id,
             name: ex.name,
@@ -342,7 +323,7 @@ router.post("/generate", authMiddleware, async (req, res) => {
             difficulty_level: ex.difficulty_level,
             target_muscles: ex.target_muscles,
             category: ex.category,
-            prescription
+            prescription: { sets: rx.sets, reps: rx.reps, duration_seconds: rx.durationSeconds, rest_seconds: rx.restSeconds },
           });
         }
       }
@@ -351,14 +332,14 @@ router.post("/generate", authMiddleware, async (req, res) => {
         plan_day_id: planDay.plan_day_id,
         day_number: planDay.day_number,
         day_label: planDay.day_label,
-        exercises: dayExercisesResponse
+        estimatedMinutes,
+        exercises: dayExercisesResponse,
       });
     }
 
     await client.query("COMMIT");
-    console.log("Workout plan generation complete");
 
-    return res.json({ plan, days: responseDays });
+    return res.json({ plan, days: responseDays, splitType: splitId, splitName: split.shortName, goal: goalId, goalName: goalDef ? goalDef.name : "General" });
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("Error generating workout plan:", err);

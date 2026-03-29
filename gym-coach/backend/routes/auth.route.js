@@ -98,10 +98,12 @@ router.post("/login", async (req, res) => {
     res.json({
       token,
       user: {
-        id: user.user_id,
+        user_id: user.user_id,
         full_name: user.full_name,
         email: user.email,
         profile_completed: user.profile_completed,
+        workout_split: user.workout_split || "ppl",
+        fitness_goal: user.fitness_goal || "gain_muscle",
       },
     });
 

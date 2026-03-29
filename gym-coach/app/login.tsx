@@ -99,7 +99,7 @@ export default function LoginScreen() {
       const { token, user } = response.data;
       if (token && user) {
         await AsyncStorage.setItem("token", token);
-        await AsyncStorage.setItem("user_id", user.id.toString());
+        await AsyncStorage.setItem("user_id", (user.user_id || user.id).toString());
         await AsyncStorage.setItem(
           "profile_completed",
           user.profile_completed ? "true" : "false"

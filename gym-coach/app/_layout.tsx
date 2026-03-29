@@ -1,6 +1,11 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { LogBox, Platform } from 'react-native';
 import 'react-native-reanimated';
+
+if (Platform.OS === 'web') {
+  LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
+}
 
 import { AuthProvider } from '@/app/context/AuthContext';
 import { ThemeProvider } from '@/app/context/ThemeContext';
@@ -25,6 +30,8 @@ export default function RootLayout() {
           <Stack.Screen name="today-workout" options={{ headerShown: false }} />
           <Stack.Screen name="day-preview" options={{ headerShown: false }} />
           <Stack.Screen name="week-plan" options={{ headerShown: false }} />
+          <Stack.Screen name="split-selector" options={{ headerShown: false }} />
+          <Stack.Screen name="goal-selector" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="register" options={{ headerShown: false }} />

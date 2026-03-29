@@ -34,7 +34,7 @@ export type WeekDayEntry = {
   isTomorrow: boolean;
 };
 
-/** Returns the current week Sun–Sat with types. */
+/** Returns the current week Mon–Sun with types. */
 export function getWeekSchedule(anchorDate: Date): WeekDayEntry[] {
   const result: WeekDayEntry[] = [];
   const today = new Date();
@@ -42,9 +42,12 @@ export function getWeekSchedule(anchorDate: Date): WeekDayEntry[] {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  const anchorDay = anchorDate.getDay();
+  const mondayOffset = anchorDay === 0 ? -6 : 1 - anchorDay;
+
   for (let d = 0; d < 7; d++) {
     const date = new Date(anchorDate);
-    date.setDate(anchorDate.getDate() - anchorDate.getDay() + d);
+    date.setDate(anchorDate.getDate() + mondayOffset + d);
     date.setHours(0, 0, 0, 0);
     result.push({
       dayName: getDayName(date),

@@ -7,15 +7,25 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useRouter, useFocusEffect } from "expo-router";
+import { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/app/config/api";
 import { useTheme } from "@/app/context/ThemeContext";
-import { getDayType, getDayName, getDayFocus } from "@/app/lib/ppl-cycle";
-
-
+import { useAuth } from "@/app/context/AuthContext";
+import {
+  type SplitId,
+  type GoalId,
+  type DayType,
+  getDayType,
+  getDayName,
+  getDayFocus,
+  DAY_COLORS,
+  GOAL_COLORS,
+  getSplitDefinition,
+  getGoalDefinition,
+} from "@/app/lib/split-cycle";
 
 type GeneratedPlanDayExercise = {
   exercise_id: number;
@@ -24,10 +34,6 @@ type GeneratedPlanDayExercise = {
   difficulty_level: string | null;
   target_muscles: string | null;
   category: string | null;
-  suitability: {
-    met_value: number | null;
-    is_high_impact: boolean | null;
-  };
   prescription: {
     sets: number;
     reps: number;
@@ -37,82 +43,27 @@ type GeneratedPlanDayExercise = {
 };
 
 type GeneratedPlanDay = {
-  plan_day_id: number;
+  plan_day_id: number | string;
   day_number: number;
   day_label: string;
   exercises: GeneratedPlanDayExercise[];
 };
 
-type GeneratedPlanResponse = {
-  plan: {
-    plan_id: number;
-    name: string;
-    goal_id: number | null;
-    duration_weeks: number;
-    days_per_week: number;
-    is_ai_generated: boolean;
-    generated_at: string;
-  };
-  days: GeneratedPlanDay[];
+export const SPLIT_WEEK_PLAN_KEY = "split_week_plan";
+
+export type SplitWeekPlan = {
+  splitType: string;
+  splitName: string;
+  schedule: DayType[];
+  days: Record<string, GeneratedPlanDay>;
 };
-
-export const PPL_WEEK_PLAN_KEY = "ppl_week_plan";
-
-export type PPLWeekPlan = {
-  push: GeneratedPlanDay;
-  pull: GeneratedPlanDay;
-  legs: GeneratedPlanDay;
-};
-
-// Mirror backend PPL keywords so fallback still produces correct push/pull/legs
-const PPL_KEYWORDS: Record<string, string[]> = {
-  Push: ["chest", "shoulder", "triceps", "pectoral", "deltoid", "pec"],
-  Pull: ["back", "biceps", "bicep", "trap", "lat", "rhomboid", "rear delt", "row", "pull", "chin"],
-  Legs: ["leg", "quad", "hamstring", "glute", "calf", "calves", "thigh", "hip", "squat", "lunge"],
-};
-
-function matchesPPL(
-  ex: { target_muscles?: string | null; category?: string | null; name?: string },
-  dayType: "Push" | "Pull" | "Legs"
-): boolean {
-  const keywords = PPL_KEYWORDS[dayType];
-  const str = [ex.target_muscles, ex.category, ex.name].filter(Boolean).join(" ").toLowerCase();
-  return keywords.some((k) => str.includes(k));
-}
-
-/** Build PPL week from generate response when generate-week fails (e.g. 404). */
-function buildPPLFallbackFromPlan(
-  days: GeneratedPlanDay[],
-  exercisesPerDay: number
-): PPLWeekPlan {
-  const allEx = days.flatMap((d) => d.exercises.map((e) => ({ ...e, prescription: e.prescription })));
-  const pushEx = allEx.filter((e) => matchesPPL(e, "Push")).slice(0, exercisesPerDay);
-  const pullEx = allEx.filter((e) => matchesPPL(e, "Pull")).slice(0, exercisesPerDay);
-  const legsEx = allEx.filter((e) => matchesPPL(e, "Legs")).slice(0, exercisesPerDay);
-  const toDay = (label: string, exercises: typeof allEx, dayNum: number): GeneratedPlanDay => {
-    const use = exercises.length >= exercisesPerDay
-      ? exercises
-      : allEx.slice((dayNum - 1) * exercisesPerDay, dayNum * exercisesPerDay);
-    return {
-      plan_day_id: dayNum,
-      day_number: dayNum,
-      day_label: label,
-      exercises: use.slice(0, exercisesPerDay),
-    };
-  };
-  return {
-    push: toDay("Push", pushEx, 1),
-    pull: toDay("Pull", pullEx, 2),
-    legs: toDay("Legs", legsEx, 3),
-  };
-}
 
 export default function HomeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { user: authUser, updateUser } = useAuth();
   const [user, setUser] = useState<any>(null);
-  const [weekPlan, setWeekPlan] = useState<PPLWeekPlan | null>(null);
-  const [todayPlan, setTodayPlan] = useState<GeneratedPlanResponse | null>(null);
+  const [weekPlan, setWeekPlan] = useState<SplitWeekPlan | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
   const [overview, setOverview] = useState<{
@@ -124,6 +75,79 @@ export default function HomeScreen() {
   } | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
+
+  const splitId: SplitId = (user?.workout_split as SplitId) || (authUser?.workout_split as SplitId) || "ppl";
+  const goalId: GoalId = (user?.fitness_goal as GoalId) || (authUser?.fitness_goal as GoalId) || "gain_muscle";
+  const splitDef = getSplitDefinition(splitId);
+  const goalDef = getGoalDefinition(goalId);
+  const lastLoadedSplit = useRef<string | null>(null);
+  const lastLoadedGoal = useRef<string | null>(null);
+
+  const loadData = useCallback(async (force = false) => {
+    const token = await AsyncStorage.getItem("token");
+    if (!token) return;
+
+    let profileSplitId: SplitId = splitId;
+    let profileGoalId: GoalId = goalId;
+    try {
+      const profileRes = await axios.get(`${API_BASE_URL}/api/profile/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUser(profileRes.data);
+      if (profileRes.data.workout_split) {
+        profileSplitId = profileRes.data.workout_split as SplitId;
+      }
+      if (profileRes.data.fitness_goal) {
+        profileGoalId = profileRes.data.fitness_goal as GoalId;
+      }
+      updateUser({ workout_split: profileRes.data.workout_split, fitness_goal: profileRes.data.fitness_goal });
+    } catch (e) {
+      console.log("Failed to load profile:", e);
+    }
+
+    const cached = await AsyncStorage.getItem(SPLIT_WEEK_PLAN_KEY);
+    const cachedPlan = cached ? (JSON.parse(cached) as SplitWeekPlan) : null;
+    const cacheValid = cachedPlan
+      && cachedPlan.splitType === profileSplitId
+      && (cachedPlan as any).goal === profileGoalId;
+
+    if (cacheValid && !force && lastLoadedSplit.current === profileSplitId && lastLoadedGoal.current === profileGoalId) {
+      setWeekPlan(cachedPlan);
+      return;
+    }
+
+    lastLoadedSplit.current = profileSplitId;
+    lastLoadedGoal.current = profileGoalId;
+    setIsLoadingPlan(true);
+    setPlanError(null);
+    setWeekPlan(null);
+
+    try {
+      const weekRes = await axios.post<SplitWeekPlan>(
+        `${API_BASE_URL}/api/workout-plan/generate-week`,
+        { splitType: profileSplitId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setWeekPlan(weekRes.data);
+      await AsyncStorage.setItem(SPLIT_WEEK_PLAN_KEY, JSON.stringify(weekRes.data));
+    } catch (error: any) {
+      console.log("Generate week failed:", error?.message ?? error);
+      try {
+        const weekViaGenerate = await axios.post<SplitWeekPlan>(
+          `${API_BASE_URL}/api/workout-plan/generate`,
+          { week: true, splitType: profileSplitId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setWeekPlan(weekViaGenerate.data);
+        await AsyncStorage.setItem(SPLIT_WEEK_PLAN_KEY, JSON.stringify(weekViaGenerate.data));
+      } catch (_e) {
+        console.log("Fallback week generation also failed");
+        setPlanError("Could not generate workout plan. Please try again.");
+      }
+    } finally {
+      setIsLoadingPlan(false);
+    }
+  }, [splitId, goalId, updateUser]);
 
   useEffect(() => {
     const fetchOverview = async () => {
@@ -143,109 +167,38 @@ export default function HomeScreen() {
         setLoadingOverview(false);
       }
     };
-
-  const fetchUserAndPlan = async () => {
-    const token = await AsyncStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      const profileRes = await axios.get(`${API_BASE_URL}/api/profile/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUser(profileRes.data);
-    } catch (e) {
-      console.log("Failed to load profile:", e);
-    }
-
-    setIsLoadingPlan(true);
-    setPlanError(null);
-
-    let planRes: GeneratedPlanResponse | null = null;
-    try {
-      const res = await axios.post<GeneratedPlanResponse>(
-        `${API_BASE_URL}/api/workout-plan/generate`,
-        { durationWeeks: 4, daysPerWeek: 3, exercisesPerDay: 6 },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      planRes = res.data;
-      setTodayPlan(res.data);
-    } catch (error: any) {
-      console.log("Generate plan failed:", error?.message ?? error);
-      setPlanError("Could not generate workout plan. Please try again.");
-    }
-
-    try {
-      const weekRes = await axios.post<PPLWeekPlan>(
-        `${API_BASE_URL}/api/workout-plan/generate-week`,
-        { exercisesPerDay: 6 },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setWeekPlan(weekRes.data);
-      await AsyncStorage.setItem(PPL_WEEK_PLAN_KEY, JSON.stringify(weekRes.data));
-    } catch (error: any) {
-      const status = error?.response?.status;
-      const code = error?.response?.data?.code;
-      console.log("Generate week failed, using fallback:", status, code, error?.message ?? error);
-      if (status === 404 && token) {
-        try {
-          const weekViaGenerate = await axios.post<PPLWeekPlan>(
-            `${API_BASE_URL}/api/workout-plan/generate`,
-            { week: true, exercisesPerDay: 6 },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          setWeekPlan(weekViaGenerate.data);
-          await AsyncStorage.setItem(PPL_WEEK_PLAN_KEY, JSON.stringify(weekViaGenerate.data));
-        } catch (_e) {
-          const days = planRes?.days;
-          if (days?.length) {
-            const fallback = buildPPLFallbackFromPlan(days, 6);
-            setWeekPlan(fallback);
-            AsyncStorage.setItem(PPL_WEEK_PLAN_KEY, JSON.stringify(fallback));
-          }
-        }
-      } else {
-        const days = planRes?.days;
-        if (days?.length) {
-          const fallback = buildPPLFallbackFromPlan(days, 6);
-          setWeekPlan(fallback);
-          AsyncStorage.setItem(PPL_WEEK_PLAN_KEY, JSON.stringify(fallback));
-        }
-      }
-    } finally {
-      setIsLoadingPlan(false);
-    }
-  };
-
     fetchOverview();
-    fetchUserAndPlan();
   }, []);
 
-  const todayType = getDayType(new Date());
-  const todayDayFromWeek = weekPlan
-    ? weekPlan[todayType.toLowerCase() as keyof PPLWeekPlan]
-    : null;
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  const fitnessLevel = user?.fitness_level || authUser?.fitness_level || "intermediate";
+  const todayType = getDayType(new Date(), splitId, fitnessLevel);
+
   const todayDay: GeneratedPlanDay | null =
-    todayDayFromWeek && todayDayFromWeek.exercises?.length > 0
-      ? todayDayFromWeek
-      : todayPlan?.days?.[0] ?? null;
-  const todayDisplayName =
-    todayDayFromWeek && todayDayFromWeek.exercises?.length > 0
-      ? todayType
-      : todayPlan?.plan?.name ?? "Workout";
+    weekPlan && todayType !== "Rest"
+      ? weekPlan.days?.[todayType] ?? null
+      : null;
+
+  const todayDisplayName = todayDay ? todayType : "Workout";
 
   const tomorrowDate = (() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
     return d;
   })();
-  const tomorrowType = getDayType(tomorrowDate);
-  const tomorrowFocus = getDayFocus(tomorrowDate);
+  const tomorrowType = getDayType(tomorrowDate, splitId, fitnessLevel);
+  const tomorrowFocus = getDayFocus(tomorrowDate, splitId, fitnessLevel);
 
   const handleStartWorkout = () => {
     if (!todayDay) return;
     const planPayload = {
       plan: {
-        plan_id: todayPlan?.plan?.plan_id ?? 0,
+        plan_id: 0,
         name: todayDisplayName,
       },
       day: todayDay,
@@ -253,6 +206,8 @@ export default function HomeScreen() {
     AsyncStorage.setItem("active_workout_plan", JSON.stringify(planPayload));
     router.push("/today-workout");
   };
+
+  const todayColor = DAY_COLORS[todayType] || DAY_COLORS.Rest;
 
   return (
     <ScrollView
@@ -263,7 +218,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.greeting, { color: colors.text }]}>
-            Good morning, {user?.full_name?.split(" ")[0] || "User"}
+            Good morning, {user?.full_name?.split(" ")[0] || authUser?.full_name?.split(" ")[0] || "User"}
           </Text>
           <Text style={[styles.subGreeting, { color: colors.textSecondary }]}>
             Let's crush your goals today
@@ -274,14 +229,38 @@ export default function HomeScreen() {
           onPress={() => router.push("/(tabs)/profile")}
         >
           <Text style={styles.profileInitials}>
-            {user?.full_name
-              ? user.full_name
+            {(user?.full_name || authUser?.full_name)
+              ? (user?.full_name || authUser?.full_name)
                   .split(" ")
                   .map((n: string) => n[0])
                   .join("")
                   .toUpperCase()
               : "U"}
           </Text>
+        </Pressable>
+      </View>
+
+      {/* Current split & goal badges */}
+      <View style={styles.badgeRow}>
+        <Pressable
+          style={[styles.splitBadge, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}
+          onPress={() => router.push("/split-selector")}
+        >
+          <View style={styles.splitBadgeLeft}>
+            <View style={[styles.splitDot, { backgroundColor: "#2AA8FF" }]} />
+            <Text style={[styles.splitBadgeText, { color: colors.text }]} numberOfLines={1}>{splitDef.shortName}</Text>
+          </View>
+          <Text style={styles.splitBadgeAction}>Change</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.splitBadge, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}
+          onPress={() => router.push("/goal-selector")}
+        >
+          <View style={styles.splitBadgeLeft}>
+            <View style={[styles.splitDot, { backgroundColor: GOAL_COLORS[goalId] || "#2AA8FF" }]} />
+            <Text style={[styles.splitBadgeText, { color: colors.text }]} numberOfLines={1}>{goalDef.shortName}</Text>
+          </View>
+          <Text style={styles.splitBadgeAction}>Change</Text>
         </Pressable>
       </View>
 
@@ -363,6 +342,11 @@ export default function HomeScreen() {
       >
         <View style={styles.cardHeader}>
           <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>TODAY'S WORKOUT</Text>
+          {todayType !== "Rest" && (
+            <View style={[styles.dayTypePill, { backgroundColor: todayColor + "22" }]}>
+              <Text style={[styles.dayTypePillText, { color: todayColor }]}>{todayType}</Text>
+            </View>
+          )}
         </View>
 
         {isLoadingPlan && (
@@ -385,13 +369,10 @@ export default function HomeScreen() {
               style={styles.workoutImage}
             />
             <View style={styles.workoutInfo}>
-              <Text style={[styles.workoutName, { color: colors.text }]}>Rest day</Text>
-              <Text style={[styles.workoutMeta, { color: colors.textSecondary }]}>Recovery · Light stretch or rest. Cycle restarts tomorrow with Push.</Text>
-              <View style={styles.workoutTags}>
-                <View style={[styles.tag, { backgroundColor: colors.surfaceHighlight }]}>
-                  <Text style={[styles.tagText, { color: colors.textSecondary }]}>Sunday</Text>
-                </View>
-              </View>
+              <Text style={[styles.workoutName, { color: colors.text }]}>Rest Day</Text>
+              <Text style={[styles.workoutMeta, { color: colors.textSecondary }]}>
+                Recovery · Light stretch or rest
+              </Text>
             </View>
           </View>
         )}
@@ -412,13 +393,13 @@ export default function HomeScreen() {
                   0
                 )}{" "}
                 total sets
+                {(todayDay as any).estimatedMinutes ? ` · ~${(todayDay as any).estimatedMinutes} min` : ""}
               </Text>
-              
             </View>
           </Pressable>
         )}
 
-        {!isLoadingPlan && !todayDay && !planError && (
+        {!isLoadingPlan && !todayDay && !planError && todayType !== "Rest" && (
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
             No workout generated yet. Complete your profile to get started.
           </Text>
@@ -455,19 +436,18 @@ export default function HomeScreen() {
           <Text style={styles.activityArrow}>→</Text>
         </Pressable>
       </View>
-      
 
-      {/* Tomorrow's Workout (PPL) */}
+      {/* Tomorrow's Workout */}
       <View style={[styles.dashboardCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>TOMORROW'S WORKOUT</Text>
-          <Pressable onPress={() => router.push({ pathname: "/day-preview", params: { date: tomorrowDate.toISOString() } })}>
+          <Pressable onPress={() => router.push({ pathname: "/day-preview", params: { date: tomorrowDate.toISOString(), splitId } })}>
             <Text style={styles.cardLink}>View</Text>
           </Pressable>
         </View>
         <Pressable
           style={styles.workoutRow}
-          onPress={() => router.push({ pathname: "/day-preview", params: { date: tomorrowDate.toISOString() } })}
+          onPress={() => router.push({ pathname: "/day-preview", params: { date: tomorrowDate.toISOString(), splitId } })}
         >
           <Image
             source={require("@/assets/images/home/featured.jpg")}
@@ -475,24 +455,18 @@ export default function HomeScreen() {
           />
           <View style={styles.workoutInfo}>
             <Text style={[styles.workoutName, { color: colors.text }]}>
-              {tomorrowType === "Rest" ? "Rest day" : `${tomorrowType} day`}
+              {tomorrowType === "Rest" ? "Rest Day" : `${tomorrowType}`}
             </Text>
             <Text style={[styles.workoutMeta, { color: colors.textSecondary }]}>
               {tomorrowType === "Rest"
                 ? "Recovery · Light stretch or rest"
                 : tomorrowFocus.muscleGroups.join(", ")}
             </Text>
-
           </View>
-        </Pressable>
-        <Pressable
-          style={styles.weekPlanRow}
-          onPress={() => router.push("/week-plan")}
-        >
         </Pressable>
       </View>
 
-      {/* Week plan – Push / Pull / Legs */}
+      {/* Week plan */}
       <View style={[styles.dashboardCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>THIS WEEK</Text>
@@ -560,7 +534,7 @@ const styles = StyleSheet.create({
   },
   header: {
     marginTop: 60,
-    marginBottom: 20,
+    marginBottom: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -585,6 +559,47 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "600",
+  },
+  badgeRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  splitBadge: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+  },
+  splitBadgeLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  splitDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  splitBadgeText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  splitBadgeAction: {
+    color: "#2AA8FF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  dayTypePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  dayTypePillText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   dashboardCard: {
     borderRadius: 20,
@@ -714,77 +729,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "500",
   },
-
   weekPlanRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-  },
-  weekPills: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    flex: 1,
-  },
-  weekPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  weekPillText: { fontSize: 11, fontWeight: "600", color: "#fff" },
-  weekPillPush: { backgroundColor: "#EF4444" },
-  weekPillPull: { backgroundColor: "#3B82F6" },
-  weekPillLegs: { backgroundColor: "#10B981" },
-  weekPillRest: { backgroundColor: "#9CA3AF" },
-  weekPlanArrow: { color: "#6366F1", fontSize: 18, fontWeight: "600", marginLeft: 8 },
-
-  // Programs section
-  programCard: {
-    width: 130,
-    marginRight: 12,
-    backgroundColor: "#F8F9FA",
-    borderRadius: 16,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-  },
-  programImage: {
-    width: "100%",
-    height: 80,
-  },
-  programCardContent: {
-    padding: 10,
-  },
-  programCardTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 2,
-  },
-  programCardMeta: {
-    fontSize: 11,
-  },
-
-  // Recommended section
-  recommendedRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  recommendedItem: {
-    flex: 1,
-  },
-  recommendedImage: {
-    width: "100%",
-    height: 90,
-    borderRadius: 14,
-    marginBottom: 8,
-  },
-  recommendedName: {
-    fontSize: 13,
-    fontWeight: "500",
-    marginBottom: 2,
-  },
-  recommendedMeta: {
-    fontSize: 11,
   },
   activityPreview: {
     flexDirection: "row",
@@ -808,5 +756,26 @@ const styles = StyleSheet.create({
     color: "#2AA8FF",
     fontSize: 18,
     fontWeight: "600",
+  },
+  recommendedRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  recommendedItem: {
+    flex: 1,
+  },
+  recommendedImage: {
+    width: "100%",
+    height: 90,
+    borderRadius: 14,
+    marginBottom: 8,
+  },
+  recommendedName: {
+    fontSize: 13,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  recommendedMeta: {
+    fontSize: 11,
   },
 });

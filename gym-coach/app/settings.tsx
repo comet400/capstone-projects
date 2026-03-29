@@ -63,9 +63,15 @@ export default function SettingsScreen() {
         colors={colors}
       />
       <SettingsRow
+        icon="dumbbell"
+        label="Training Split"
+        onPress={() => router.push("/split-selector")}
+        colors={colors}
+      />
+      <SettingsRow
         icon="target"
-        label="Workout Goals"
-        onPress={() => {}}
+        label="Fitness Goal"
+        onPress={() => router.push("/goal-selector")}
         colors={colors}
       />
 

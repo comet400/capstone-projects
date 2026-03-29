@@ -9,26 +9,29 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
-import { getDayFocus, getDayName, getDayType } from "./lib/ppl-cycle";
-import { PPL_WEEK_PLAN_KEY, type PPLWeekPlan } from "@/app/(tabs)/home";
-
-const colors = {
-  background: "#FFFFFF",
-  surface: "#F8F9FA",
-  text: "#1A1A1A",
-  textSecondary: "#6B7280",
-  primary: "#6366F1",
-  Rest: "#9CA3AF",
-  Push: "#EF4444",
-  Pull: "#3B82F6",
-  Legs: "#10B981",
-};
+import { useAuth } from "@/app/context/AuthContext";
+import { useTheme } from "@/app/context/ThemeContext";
+import { API_BASE_URL } from "@/app/config/api";
+import {
+  type SplitId,
+  getDayFocus,
+  getDayName,
+  getDayType,
+  DAY_COLORS,
+} from "@/app/lib/split-cycle";
+import { SPLIT_WEEK_PLAN_KEY, type SplitWeekPlan } from "@/app/(tabs)/home";
 
 export default function DayPreviewScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ date?: string; weekday?: string }>();
-  const [weekPlan, setWeekPlan] = useState<PPLWeekPlan | null>(null);
+  const { colors } = useTheme();
+  const { user } = useAuth();
+  const params = useLocalSearchParams<{ date?: string; weekday?: string; splitId?: string }>();
+  const [weekPlan, setWeekPlan] = useState<SplitWeekPlan | null>(null);
+
+  const splitId: SplitId = (params.splitId as SplitId) || (user?.workout_split as SplitId) || "ppl";
+  const fitnessLevel = user?.fitness_level || "intermediate";
 
   const date = React.useMemo(() => {
     if (params.date) return new Date(params.date);
@@ -44,42 +47,60 @@ export default function DayPreviewScreen() {
   }, [params.date, params.weekday]);
 
   useEffect(() => {
-    AsyncStorage.getItem(PPL_WEEK_PLAN_KEY).then((raw) => {
-      if (raw) setWeekPlan(JSON.parse(raw) as PPLWeekPlan);
-    });
-  }, []);
+    const load = async () => {
+      const raw = await AsyncStorage.getItem(SPLIT_WEEK_PLAN_KEY);
+      if (raw) {
+        setWeekPlan(JSON.parse(raw) as SplitWeekPlan);
+        return;
+      }
+      const token = await AsyncStorage.getItem("token");
+      if (!token) return;
+      try {
+        const res = await axios.post<SplitWeekPlan>(
+          `${API_BASE_URL}/api/workout-plan/generate-week`,
+          { splitType: splitId },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setWeekPlan(res.data);
+        await AsyncStorage.setItem(SPLIT_WEEK_PLAN_KEY, JSON.stringify(res.data));
+      } catch (e) {
+        console.log("day-preview: failed to generate plan", e);
+      }
+    };
+    load();
+  }, [splitId]);
 
-  const dayType = getDayType(date);
-  const focus = getDayFocus(date);
-  const typeColor = colors[focus.type] ?? colors.textSecondary;
+  const dayType = getDayType(date, splitId, fitnessLevel);
+  const focus = getDayFocus(date, splitId, fitnessLevel);
+  const typeColor = DAY_COLORS[focus.type] ?? colors.textSecondary;
   const dayExercises =
     dayType !== "Rest" && weekPlan
-      ? weekPlan[dayType.toLowerCase() as keyof PPLWeekPlan]?.exercises ?? []
+      ? weekPlan.days?.[dayType]?.exercises ?? []
       : [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>{getDayName(date)}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{getDayName(date)}</Text>
       </View>
 
       <View style={[styles.typeBadge, { backgroundColor: typeColor + "20" }]}>
         <Text style={[styles.typeText, { color: typeColor }]}>{focus.type}</Text>
       </View>
 
-      <Text style={styles.title}>{focus.title}</Text>
-      <Text style={styles.subtitle}>{focus.subtitle}</Text>
+      <Text style={[styles.title, { color: colors.text }]}>{focus.title}</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{focus.subtitle}</Text>
 
       {focus.muscleGroups.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Focus areas</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Focus areas</Text>
           <View style={styles.chipRow}>
             {focus.muscleGroups.map((m) => (
-              <View key={m} style={styles.chip}>
-                <Text style={styles.chipText}>{m}</Text>
+              <View key={m} style={[styles.chip, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.chipText, { color: colors.text }]}>{m}</Text>
               </View>
             ))}
           </View>
@@ -88,18 +109,20 @@ export default function DayPreviewScreen() {
 
       {dayType !== "Rest" && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Exercises</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Exercises</Text>
           {!weekPlan ? (
-            <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 12 }} />
+            <ActivityIndicator size="small" color={typeColor} style={{ marginVertical: 12 }} />
           ) : dayExercises.length === 0 ? (
-            <Text style={styles.emptyExercises}>No exercises loaded for this day.</Text>
+            <Text style={[styles.emptyExercises, { color: colors.textSecondary }]}>
+              No exercises loaded for this day.
+            </Text>
           ) : (
-            dayExercises.map((ex, idx) => (
+            dayExercises.map((ex: any, idx: number) => (
               <View key={ex.exercise_id ?? idx} style={styles.exerciseRow}>
-                <Text style={styles.exerciseBullet}>{idx + 1}</Text>
+                <Text style={[styles.exerciseBullet, { color: typeColor }]}>{idx + 1}</Text>
                 <View style={styles.exerciseInfo}>
-                  <Text style={styles.exerciseName}>{ex.name}</Text>
-                  <Text style={styles.exerciseMeta}>
+                  <Text style={[styles.exerciseName, { color: colors.text }]}>{ex.name}</Text>
+                  <Text style={[styles.exerciseMeta, { color: colors.textSecondary }]}>
                     {ex.prescription?.sets ?? 0} sets × {ex.prescription?.reps ?? 0} reps
                     {ex.target_muscles ? ` · ${ex.target_muscles}` : ""}
                   </Text>
@@ -110,18 +133,18 @@ export default function DayPreviewScreen() {
         </View>
       )}
 
-      <View style={styles.tipCard}>
-        <Ionicons name="bulb-outline" size={20} color={colors.primary} />
-        <Text style={styles.tipText}>{focus.tip}</Text>
+      <View style={[styles.tipCard, { backgroundColor: colors.surface }]}>
+        <Ionicons name="bulb-outline" size={20} color={typeColor} />
+        <Text style={[styles.tipText, { color: colors.text }]}>{focus.tip}</Text>
       </View>
 
       {focus.type === "Rest" && (
-        <Text style={styles.restNote}>
-          Your Push / Pull / Legs cycle restarts on Monday with Push day.
+        <Text style={[styles.restNote, { color: colors.textSecondary }]}>
+          Enjoy your rest day. Your next training day is coming up!
         </Text>
       )}
 
-      <Pressable style={styles.backButton} onPress={() => router.back()}>
+      <Pressable style={[styles.backButton, { backgroundColor: typeColor }]} onPress={() => router.back()}>
         <Text style={styles.backButtonText}>Back to Home</Text>
       </Pressable>
 
@@ -131,7 +154,7 @@ export default function DayPreviewScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   content: { paddingHorizontal: 16, paddingBottom: 24 },
   header: {
     flexDirection: "row",
@@ -140,7 +163,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   backBtn: { marginRight: 12, padding: 4 },
-  headerTitle: { fontSize: 18, fontWeight: "600", color: colors.text },
+  headerTitle: { fontSize: 18, fontWeight: "600" },
   typeBadge: {
     alignSelf: "flex-start",
     paddingHorizontal: 12,
@@ -149,32 +172,30 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   typeText: { fontSize: 14, fontWeight: "700" },
-  title: { fontSize: 24, fontWeight: "800", color: colors.text, marginBottom: 4 },
-  subtitle: { fontSize: 15, color: colors.textSecondary, marginBottom: 24 },
+  title: { fontSize: 24, fontWeight: "800", marginBottom: 4 },
+  subtitle: { fontSize: 15, marginBottom: 24 },
   section: { marginBottom: 20 },
-  sectionTitle: { fontSize: 12, fontWeight: "600", color: colors.textSecondary, marginBottom: 10, letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 12, fontWeight: "600", marginBottom: 10, letterSpacing: 0.5 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { backgroundColor: colors.surface, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
-  chipText: { fontSize: 14, fontWeight: "600", color: colors.text },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
+  chipText: { fontSize: 14, fontWeight: "600" },
   tipCard: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 12,
-    backgroundColor: colors.surface,
     padding: 16,
     borderRadius: 16,
     marginBottom: 16,
   },
-  tipText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 22 },
-  restNote: { fontSize: 13, color: colors.textSecondary, fontStyle: "italic", marginBottom: 24 },
+  tipText: { flex: 1, fontSize: 14, lineHeight: 22 },
+  restNote: { fontSize: 13, fontStyle: "italic", marginBottom: 24 },
   exerciseRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 12 },
-  exerciseBullet: { width: 24, fontSize: 14, fontWeight: "700", color: colors.primary },
+  exerciseBullet: { width: 24, fontSize: 14, fontWeight: "700" },
   exerciseInfo: { flex: 1 },
-  exerciseName: { fontSize: 15, fontWeight: "600", color: colors.text },
-  exerciseMeta: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  emptyExercises: { fontSize: 14, color: colors.textSecondary, fontStyle: "italic" },
+  exerciseName: { fontSize: 15, fontWeight: "600" },
+  exerciseMeta: { fontSize: 13, marginTop: 2 },
+  emptyExercises: { fontSize: 14, fontStyle: "italic" },
   backButton: {
-    backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
