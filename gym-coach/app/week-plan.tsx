@@ -342,7 +342,7 @@ export default function WeekPlanScreen() {
       {/* Goal indicator */}
       <Pressable
         style={[styles.splitInfoRow, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 16 }]}
-        onPress={() => router.push("/goal-selector")}
+        onPress={() => router.push("/goal-selector" as any)}
       >
         <MaterialCommunityIcons
           name={getGoalDefinition(currentGoal).icon as any}

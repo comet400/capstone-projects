@@ -284,7 +284,7 @@ export default function HomeScreen() {
       <View style={styles.badgeRow}>
         <Pressable
           style={[styles.splitBadge, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}
-          onPress={() => router.push("/split-selector")}
+          onPress={() => router.push("/split-selector" as any)}
         >
           <View style={styles.splitBadgeLeft}>
             <View style={[styles.splitDot, { backgroundColor: "#2AA8FF" }]} />
@@ -294,7 +294,7 @@ export default function HomeScreen() {
         </Pressable>
         <Pressable
           style={[styles.splitBadge, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}
-          onPress={() => router.push("/goal-selector")}
+          onPress={() => router.push("/goal-selector" as any)}
         >
           <View style={styles.splitBadgeLeft}>
             <View style={[styles.splitDot, { backgroundColor: GOAL_COLORS[goalId] || "#2AA8FF" }]} />
@@ -519,47 +519,6 @@ export default function HomeScreen() {
           <Pressable onPress={() => router.push("/week-plan")}>
             <Text style={styles.cardLink}>View full week</Text>
           </Pressable>
-        </View>
-      </View>
-
-      {/* Recommended For You */}
-      <View
-        style={[
-          styles.dashboardCard,
-          { backgroundColor: colors.surface, borderColor: colors.border },
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>
-            RECOMMENDED FOR YOU
-          </Text>
-          <Text style={styles.cardLink}>More</Text>
-        </View>
-        <View style={styles.recommendedRow}>
-          <View style={styles.recommendedItem}>
-            <Image
-              source={require("@/assets/images/home/reco1.jpg")}
-              style={styles.recommendedImage}
-            />
-            <Text style={[styles.recommendedName, { color: colors.text }]}>
-              Full Body Stretch
-            </Text>
-            <Text style={[styles.recommendedMeta, { color: colors.textSecondary }]}>
-              15 min · beginner
-            </Text>
-          </View>
-          <View style={styles.recommendedItem}>
-            <Image
-              source={require("@/assets/images/home/reco2.jpg")}
-              style={styles.recommendedImage}
-            />
-            <Text style={[styles.recommendedName, { color: colors.text }]}>
-              Core Strength
-            </Text>
-            <Text style={[styles.recommendedMeta, { color: colors.textSecondary }]}>
-              20 min · intermediate
-            </Text>
-          </View>
         </View>
       </View>
 
