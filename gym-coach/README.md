@@ -1,50 +1,106 @@
-# Welcome to your Expo app 👋
+# UCoach - AI Gym Coach
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+An AI-powered gym coaching app built with Expo (React Native), Node.js, and a Python ML service for real-time exercise analysis.
 
-## Get started
+## Prerequisites
 
-1. Install dependencies
+Make sure you have these installed before running:
 
-   ```bash
-   npm install
-   ```
+| Tool | Version | Install |
+|------|---------|---------|
+| **Node.js** | v18+ | [nodejs.org](https://nodejs.org/) |
+| **Python** | 3.10+ | [python.org](https://www.python.org/) |
+| **Expo Go** | Latest | Install from App Store / Play Store on your phone |
 
-2. Start the app
+## Quick Start (One Command)
 
-   ```bash
-   npx expo start
-   ```
+```powershell
+# 1. Clone the repo and cd into it
+cd gym-coach
 
-In the output, you'll find options to open the app in a
+# 2. Install frontend dependencies (first time only)
+npm install
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+# 3. Install backend dependencies (first time only)
+cd backend && npm install && cd ..
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+# 4. Install ML dependencies (first time only)
+cd ml_service && pip install -r ptt/requirements.txt && cd ..
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+# 5. Start everything
+npm run dev
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+That's it. This single command starts **all 3 services**:
 
-## Learn more
+| Service | Port | What it does |
+|---------|------|-------------|
+| Expo dev server | 8081 | Serves the React Native app |
+| Node.js backend | 5825 | REST API, auth, database |
+| Python ML service | 8010 | Exercise pose analysis |
 
-To learn more about developing your project with Expo, look at the following resources:
+> **Note:** The app **automatically detects your computer's IP address** so you don't need to change any config files when switching networks.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Connecting Your Phone
 
-## Join the community
+1. Make sure your phone and computer are on the **same WiFi network**
+2. Open **Expo Go** on your phone
+3. Scan the QR code shown in the terminal
 
-Join our community of developers creating universal apps.
+## Available Scripts
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start all 3 services at once |
+| `npm run start` | Start only the Expo dev server |
+| `npm run backend` | Start only the Node.js backend |
+| `npm run ml` | Start only the Python ML service |
+
+## Project Structure
+
+```
+gym-coach/
+  app/              # React Native screens (Expo Router file-based routing)
+    (tabs)/          # Tab navigation screens (home, camera, workouts, etc.)
+    config/          # App configuration (API URL auto-detection)
+    context/         # React contexts (Auth, Theme)
+    components/      # Reusable UI components
+  backend/           # Node.js + Express API
+    routes/          # API route handlers
+    controllers/     # Business logic
+    db/              # Database connection (Supabase PostgreSQL)
+    models/          # Data models
+  ml_service/        # Python FastAPI service
+    ptt/             # Pose tracking & analysis engine
+  assets/            # Images, icons, fonts
+  start-all.ps1     # One-command startup script
+```
+
+## Environment Setup
+
+The backend requires a `backend/config.env` file with:
+
+```env
+DATABASE_URL=postgresql://...
+JWT_SECRET=your_secret_here
+```
+
+> **This file is gitignored.** Ask a team member for the credentials, or check the team's shared docs.
+
+## Troubleshooting
+
+**"Cannot find module" error in backend**
+```powershell
+cd backend && npm install
+```
+
+**Port already in use**
+The startup script automatically kills stale processes. If it still happens:
+```powershell
+# Find and kill whatever is on port 5825 or 8010
+Get-NetTCPConnection -LocalPort 5825 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+**App can't connect to backend on phone**
+- Make sure phone and computer are on the same WiFi
+- Check that Windows Firewall isn't blocking port 5825
