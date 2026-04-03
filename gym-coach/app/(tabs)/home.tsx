@@ -30,9 +30,9 @@ import {
 
 function getGreeting(): string {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
+  if (h < 12) return "Good Morning";
+  if (h < 17) return "Good Afternoon";
+  return "Good Evening";
 }
 
 type GeneratedPlanDayExercise = {
@@ -66,6 +66,13 @@ export type SplitWeekPlan = {
   days: Record<string, GeneratedPlanDay>;
 };
 
+// Helper to get estimated minutes for a day
+function getEstimatedMinutes(day: GeneratedPlanDay): number {
+  // rough estimate: each set ~2 min + rest
+  const totalSets = day.exercises.reduce((acc, ex) => acc + (ex.prescription.sets || 0), 0);
+  return Math.ceil(totalSets * 1.5 + day.exercises.length * 0.5);
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -83,11 +90,7 @@ export default function HomeScreen() {
   } | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [overviewError, setOverviewError] = useState<string | null>(null);
-  const [recentWorkout, setRecentWorkout] = useState<{
-    exercise_type: string;
-    duration_seconds: number;
-    created_at: string;
-  } | null>(null);
+  const [recentWorkouts, setRecentWorkouts] = useState<any[]>([]);
 
   const splitId: SplitId = (authUser?.workout_split as SplitId) || (user?.workout_split as SplitId) || "ppl";
   const goalId: GoalId = (authUser?.fitness_goal as GoalId) || (user?.fitness_goal as GoalId) || "gain_muscle";
@@ -189,7 +192,7 @@ export default function HomeScreen() {
     };
     fetchOverview();
 
-    // Fetch most recent workout for the Recent Activity card
+    // Fetch most recent workouts for Recent Activity section
     (async () => {
       try {
         const token = await AsyncStorage.getItem("token");
@@ -198,12 +201,11 @@ export default function HomeScreen() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const all = Array.isArray(res.data) ? res.data : [];
-        if (all.length > 0) {
-          const sorted = all.sort(
-            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-          setRecentWorkout(sorted[0]);
-        }
+        // sort descending by date and take latest 3
+        const sorted = all.sort(
+          (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setRecentWorkouts(sorted.slice(0, 3));
       } catch (_e) {
         // silently fail — card will show fallback
       }
@@ -249,10 +251,26 @@ export default function HomeScreen() {
 
   const todayColor = DAY_COLORS[todayType] || DAY_COLORS.Rest;
 
+  // Build week days for "This Week" section (7 days from today)
+  const weekDays = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() + i);
+    const dayType = getDayType(date, splitId, fitnessLevel);
+    const focus = getDayFocus(date, splitId, fitnessLevel);
+    weekDays.push({
+      date,
+      dayType,
+      focus,
+      isToday: i === 0,
+    });
+  }
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 100 }}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -304,7 +322,7 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      {/* Today's Overview */}
+      {/* Today's Overview (mins & workouts only, weekly progress -> daily progress) */}
       <View
         style={[
           styles.dashboardCard,
@@ -333,7 +351,7 @@ export default function HomeScreen() {
               </View>
             </View>
             <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-              Weekly Progress
+              Daily Progress
             </Text>
           </View>
 
@@ -349,24 +367,14 @@ export default function HomeScreen() {
                   <Text style={[styles.statLabel, { color: colors.textSecondary }]}>mins</Text>
                 </View>
                 <View style={[styles.statBox, { backgroundColor: colors.background }]}>
-                  <Text style={[styles.statValue, { color: colors.text }]}>{overview.totalCalories}</Text>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>kcal</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: colors.background }]}>
                   <Text style={[styles.statValue, { color: colors.text }]}>{overview.workoutsCompleted}</Text>
                   <Text style={[styles.statLabel, { color: colors.textSecondary }]}>workouts</Text>
-                </View>
-                <View style={[styles.statBox, { backgroundColor: colors.background }]}>
-                  <Text style={[styles.statValue, { color: colors.text }]}>{overview.streak}</Text>
-                  <Text style={[styles.statLabel, { color: colors.textSecondary }]}>streak</Text>
                 </View>
               </>
             ) : (
               <>
                 <View style={[styles.statBox, { backgroundColor: colors.background }]}><Text style={[styles.statValue, { color: colors.text }]}>0</Text><Text style={[styles.statLabel, { color: colors.textSecondary }]}>mins</Text></View>
-                <View style={[styles.statBox, { backgroundColor: colors.background }]}><Text style={[styles.statValue, { color: colors.text }]}>0</Text><Text style={[styles.statLabel, { color: colors.textSecondary }]}>kcal</Text></View>
                 <View style={[styles.statBox, { backgroundColor: colors.background }]}><Text style={[styles.statValue, { color: colors.text }]}>0</Text><Text style={[styles.statLabel, { color: colors.textSecondary }]}>workouts</Text></View>
-                <View style={[styles.statBox, { backgroundColor: colors.background }]}><Text style={[styles.statValue, { color: colors.text }]}>0</Text><Text style={[styles.statLabel, { color: colors.textSecondary }]}>streak</Text></View>
               </>
             )}
           </View>
@@ -416,27 +424,36 @@ export default function HomeScreen() {
             </View>
           </View>
         )}
+
         {!isLoadingPlan && todayDay && todayType !== "Rest" && (
-          <Pressable style={styles.workoutRow} onPress={handleStartWorkout}>
-            <Image
-              source={require("@/assets/images/home/featured.jpg")}
-              style={styles.workoutImage}
-            />
-            <View style={styles.workoutInfo}>
-              <Text style={[styles.workoutName, { color: colors.text }]}>
-                {todayDisplayName}
-              </Text>
-              <Text style={[styles.workoutMeta, { color: colors.textSecondary }]}>
-                {todayDay.exercises.length} exercises ·{" "}
-                {todayDay.exercises.reduce(
-                  (total, ex) => total + (ex.prescription.sets || 0),
-                  0
-                )}{" "}
-                total sets
-                {(todayDay as any).estimatedMinutes ? ` · ~${(todayDay as any).estimatedMinutes} min` : ""}
-              </Text>
+          <>
+            <View style={styles.workoutRow}>
+              <Image
+                source={require("@/assets/images/home/featured.jpg")}
+                style={styles.workoutImage}
+              />
+              <View style={styles.workoutInfo}>
+                <Text style={[styles.workoutName, { color: colors.text, fontSize: 18, marginBottom: 4 }]}>
+                  {todayDisplayName}
+                </Text>
+                <Text style={[styles.workoutMetaDetail, { color: colors.textSecondary }]}>
+                  {todayDay.exercises.length} exercises
+                </Text>
+                <Text style={[styles.workoutMetaDetail, { color: colors.textSecondary }]}>
+                  {todayDay.exercises.reduce(
+                    (total, ex) => total + (ex.prescription.sets || 0),
+                    0
+                  )} total sets
+                </Text>
+                <Text style={[styles.workoutMetaDetail, { color: colors.textSecondary }]}>
+                  ~{getEstimatedMinutes(todayDay)} min
+                </Text>
+              </View>
             </View>
-          </Pressable>
+            <Pressable style={styles.beginButton} onPress={handleStartWorkout}>
+              <Text style={styles.beginButtonText}>Begin Workout</Text>
+            </Pressable>
+          </>
         )}
 
         {!isLoadingPlan && !todayDay && !planError && todayType !== "Rest" && (
@@ -461,26 +478,42 @@ export default function HomeScreen() {
             <Text style={styles.cardLink}>View All</Text>
           </Pressable>
         </View>
-        <Pressable
-          style={[styles.activityPreview, { backgroundColor: colors.background }]}
-          onPress={() => router.push("/(tabs)/activities")}
-        >
-          <View style={styles.activityPreviewContent}>
-            <Text style={[styles.activityPreviewTitle, { color: colors.text }]}>
-              {recentWorkout
-                ? recentWorkout.exercise_type
+        {recentWorkouts.length === 0 ? (
+          <Pressable
+            style={[styles.activityPreview, { backgroundColor: colors.background }]}
+            onPress={() => router.push("/(tabs)/activities")}
+          >
+            <View style={styles.activityPreviewContent}>
+              <Text style={[styles.activityPreviewTitle, { color: colors.text }]}>
+                No recent activity
+              </Text>
+              <Text style={[styles.activityPreviewMeta, { color: colors.textSecondary }]}>
+                Complete a workout to see it here
+              </Text>
+            </View>
+            <Text style={styles.activityArrow}>→</Text>
+          </Pressable>
+        ) : (
+          recentWorkouts.map((workout, idx) => (
+            <Pressable
+              key={idx}
+              style={[styles.activityPreview, { backgroundColor: colors.background, marginBottom: idx === recentWorkouts.length - 1 ? 0 : 8 }]}
+              onPress={() => router.push("/(tabs)/activities")}
+            >
+              <View style={styles.activityPreviewContent}>
+                <Text style={[styles.activityPreviewTitle, { color: colors.text }]}>
+                  {workout.exercise_type
                     .replace(/_/g, " ")
-                    .replace(/\b\w/g, (l) => l.toUpperCase())
-                : "No recent activity"}
-            </Text>
-            <Text style={[styles.activityPreviewMeta, { color: colors.textSecondary }]}>
-              {recentWorkout
-                ? `${Math.round(recentWorkout.duration_seconds / 60)} min · ${new Date(recentWorkout.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                : "Complete a workout to see it here"}
-            </Text>
-          </View>
-          <Text style={styles.activityArrow}>→</Text>
-        </Pressable>
+                    .replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                </Text>
+                <Text style={[styles.activityPreviewMeta, { color: colors.textSecondary }]}>
+                  {Math.round(workout.duration_seconds / 60)} min · {new Date(workout.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </Text>
+              </View>
+              <Text style={styles.activityArrow}>→</Text>
+            </Pressable>
+          ))
+        )}
       </View>
 
       {/* Tomorrow's Workout */}
@@ -488,17 +521,16 @@ export default function HomeScreen() {
         <View style={styles.cardHeader}>
           <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>TOMORROW'S WORKOUT</Text>
           <Pressable onPress={() => router.push({ pathname: "/day-preview", params: { date: tomorrowDate.toISOString(), splitId } })}>
-            <Text style={styles.cardLink}>View</Text>
+            <Text style={styles.cardLink}>Preview</Text>
           </Pressable>
         </View>
         <Pressable
           style={styles.workoutRow}
           onPress={() => router.push({ pathname: "/day-preview", params: { date: tomorrowDate.toISOString(), splitId } })}
         >
-          <Image
-            source={require("@/assets/images/home/featured.jpg")}
-            style={styles.workoutImage}
-          />
+          <View style={styles.tomorrowIcon}>
+            <Text style={styles.tomorrowIconText}>🌙</Text>
+          </View>
           <View style={styles.workoutInfo}>
             <Text style={[styles.workoutName, { color: colors.text }]}>
               {tomorrowType === "Rest" ? "Rest Day" : `${tomorrowType}`}
@@ -512,7 +544,7 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      {/* Week plan */}
+      {/* This Week (horizontal scrollable cards - using ScrollView instead of FlatList) */}
       <View style={[styles.dashboardCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.cardHeader}>
           <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>THIS WEEK</Text>
@@ -520,9 +552,36 @@ export default function HomeScreen() {
             <Text style={styles.cardLink}>View full week</Text>
           </Pressable>
         </View>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 12 }}
+        >
+          {weekDays.map((item, index) => (
+            <Pressable
+              key={index}
+              style={[
+                styles.weekDayCard,
+                { backgroundColor: colors.background, borderColor: colors.border },
+                item.isToday && styles.weekDayCardToday,
+              ]}
+              onPress={() => router.push({ pathname: "/day-preview", params: { date: item.date.toISOString(), splitId } })}
+            >
+              <Text style={[styles.weekDayName, { color: colors.text }]}>
+                {item.date.toLocaleDateString("en-US", { weekday: "short" })}
+              </Text>
+              <Text style={[styles.weekDayType, { color: colors.textSecondary }]}>
+                {item.dayType === "Rest" ? "Rest" : item.dayType}
+              </Text>
+              {item.dayType !== "Rest" && (
+                <Text style={[styles.weekDayFocus, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {item.focus.muscleGroups.slice(0, 2).join(", ")}
+                </Text>
+              )}
+            </Pressable>
+          ))}
+        </ScrollView>
       </View>
-
-      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
@@ -697,6 +756,7 @@ const styles = StyleSheet.create({
   workoutRow: {
     flexDirection: "row",
     gap: 14,
+    marginBottom: 12,
   },
   workoutImage: {
     width: 80,
@@ -716,18 +776,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 8,
   },
-  workoutTags: {
-    flexDirection: "row",
-    gap: 8,
+  workoutMetaDetail: {
+    fontSize: 14,
+    lineHeight: 20,
   },
-  tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  beginButton: {
+    backgroundColor: "#2AA8FF",
+    borderRadius: 30,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 8,
   },
-  tagText: {
-    fontSize: 11,
-    fontWeight: "500",
+  beginButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
   weekPlanRow: {
     flexDirection: "row",
@@ -757,25 +820,39 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
   },
-  recommendedRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  recommendedItem: {
-    flex: 1,
-  },
-  recommendedImage: {
-    width: "100%",
-    height: 90,
+  tomorrowIcon: {
+    width: 80,
+    height: 80,
     borderRadius: 14,
-    marginBottom: 8,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  recommendedName: {
-    fontSize: 13,
+  tomorrowIconText: {
+    fontSize: 32,
+  },
+  weekDayCard: {
+    width: 100,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "center",
+    gap: 4,
+  },
+  weekDayCardToday: {
+    borderColor: "#2AA8FF",
+    borderWidth: 2,
+  },
+  weekDayName: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  weekDayType: {
+    fontSize: 12,
     fontWeight: "500",
-    marginBottom: 2,
   },
-  recommendedMeta: {
-    fontSize: 11,
+  weekDayFocus: {
+    fontSize: 10,
+    textAlign: "center",
   },
 });

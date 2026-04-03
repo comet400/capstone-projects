@@ -17,7 +17,7 @@ import { API_BASE_URL } from "@/app/config/api";
 import { Ionicons } from "@expo/vector-icons";
 
 type Exercise = {
-  id: number;
+  exercise_id: number;
   name: string;
   description: string | null;
   target_muscles: string | null;
@@ -35,17 +35,24 @@ export default function MuscleExercisesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch exercises for the selected muscle
   useEffect(() => {
     const fetchExercises = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const token = await AsyncStorage.getItem("token");
-        if (!token) return;
+        if (!token) {
+          setError("Authentication required.");
+          return;
+        }
 
         const res = await axios.get(`${API_BASE_URL}/api/exercises`, {
           headers: { Authorization: `Bearer ${token}` },
           params: { target_muscles: muscle },
         });
-        setExercises(res.data);
+
+        setExercises(res.data || []);
       } catch (err: any) {
         console.log("Error fetching exercises:", err);
         setError("Could not load exercises. Please try again.");
@@ -57,35 +64,44 @@ export default function MuscleExercisesScreen() {
     fetchExercises();
   }, [muscle]);
 
+  // Handle pressing an exercise
   const handleExercisePress = async (exercise: Exercise) => {
-    const planPayload = {
-      plan: { plan_id: 0, name: exercise.name },
-      day: {
-        plan_day_id: `single_${exercise.id}`,
-        day_number: 1,
-        day_label: exercise.name,
-        exercises: [
-          {
-            exercise_id: exercise.id,
-            name: exercise.name,
-            description: exercise.description,
-            target_muscles: exercise.target_muscles,
-            difficulty_level: exercise.difficulty_level,
-            category: exercise.category,
-            prescription: {
-              sets: 3,
-              reps: 10,
-              duration_seconds: 0,
-              rest_seconds: 60,
+    try {
+      const planPayload = {
+        plan: { plan_id: 0, name: exercise.name },
+        day: {
+          plan_day_id: `single_${exercise.exercise_id}`,
+          day_number: 1,
+          day_label: exercise.name,
+          exercises: [
+            {
+              exercise_id: exercise.exercise_id,
+              name: exercise.name,
+              description: exercise.description,
+              target_muscles: exercise.target_muscles,
+              difficulty_level: exercise.difficulty_level,
+              category: exercise.category,
+              prescription: {
+                sets: 3,
+                reps: 10,
+                duration_seconds: 0,
+                rest_seconds: 60,
+              },
             },
-          },
-        ],
-      },
-    };
-    await AsyncStorage.setItem("active_workout_plan", JSON.stringify(planPayload));
-    router.push("/today-workout");
+          ],
+        },
+      };
+      await AsyncStorage.setItem(
+        "active_workout_plan",
+        JSON.stringify(planPayload)
+      );
+      router.push("/today-workout");
+    } catch (err) {
+      console.log("Failed to save workout plan:", err);
+    }
   };
 
+  // Loading state
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -97,6 +113,7 @@ export default function MuscleExercisesScreen() {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -114,23 +131,29 @@ export default function MuscleExercisesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{muscle} Exercises</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {muscle} Exercises
+        </Text>
       </View>
 
+      {/* Empty state */}
       {exercises.length === 0 ? (
         <View style={styles.center}>
           <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-            No exercises found for {muscle}. Check back soon!
+            No exercises found for {muscle}. 
           </Text>
         </View>
       ) : (
         <FlatList
           data={exercises}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item, index) =>
+            item.exercise_id ? item.exercise_id.toString() : index.toString()
+          }
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
             <Pressable
@@ -138,14 +161,28 @@ export default function MuscleExercisesScreen() {
               onPress={() => handleExercisePress(item)}
             >
               {item.thumbnail_url ? (
-                <Image source={{ uri: item.thumbnail_url }} style={styles.thumbnail} />
+                <Image
+                  source={{ uri: item.thumbnail_url }}
+                  style={styles.thumbnail}
+                />
               ) : (
-                <View style={[styles.thumbnailPlaceholder, { backgroundColor: colors.border }]}>
-                  <Ionicons name="fitness-outline" size={24} color={colors.textSecondary} />
+                <View
+                  style={[
+                    styles.thumbnailPlaceholder,
+                    { backgroundColor: colors.border },
+                  ]}
+                >
+                  <Ionicons
+                    name="fitness-outline"
+                    size={24}
+                    color={colors.textSecondary}
+                  />
                 </View>
               )}
               <View style={styles.cardContent}>
-                <Text style={[styles.exerciseName, { color: colors.text }]}>{item.name}</Text>
+                <Text style={[styles.exerciseName, { color: colors.text }]}>
+                  {item.name}
+                </Text>
                 {item.target_muscles && (
                   <Text style={[styles.muscleText, { color: colors.textSecondary }]}>
                     {item.target_muscles}
@@ -153,7 +190,9 @@ export default function MuscleExercisesScreen() {
                 )}
                 {item.difficulty_level && (
                   <View style={styles.difficultyBadge}>
-                    <Text style={styles.difficultyText}>{item.difficulty_level}</Text>
+                    <Text style={styles.difficultyText}>
+                      {item.difficulty_level}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -168,7 +207,13 @@ export default function MuscleExercisesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 60, paddingBottom: 16 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+  },
   backBtn: { padding: 8, marginRight: 8 },
   headerTitle: { fontSize: 22, fontWeight: "700" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },

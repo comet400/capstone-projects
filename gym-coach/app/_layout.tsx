@@ -2,6 +2,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LogBox, Platform } from 'react-native';
 import 'react-native-reanimated';
+import { WorkoutProvider } from '@/app/context/WorkoutContext';
+import { FloatingWorkoutMiniPlayer } from '@/app/components/FloatingWorkoutMiniPlayer';
 
 if (Platform.OS === 'web') {
   LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
@@ -18,26 +20,29 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="workout-summary" options={{ headerShown: false }} />
-          <Stack.Screen name="settings" options={{ headerShown: false }} />
-          <Stack.Screen name="appearance" options={{ headerShown: false }} />
-          <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-          <Stack.Screen name="past-workouts" options={{ headerShown: false }} />
-          <Stack.Screen name="progress" options={{ headerShown: false }} />
-          <Stack.Screen name="highlights" options={{ headerShown: false }} />
-          <Stack.Screen name="today-workout" options={{ headerShown: false }} />
-          <Stack.Screen name="day-preview" options={{ headerShown: false }} />
-          <Stack.Screen name="week-plan" options={{ headerShown: false }} />
-          <Stack.Screen name="split-selector" options={{ headerShown: false }} />
-          <Stack.Screen name="goal-selector" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="register" options={{ headerShown: false }} />
-          <Stack.Screen name="newUser" options={{ headerShown: false }} />
-        </Stack>
-        <StatusBar style="auto" />
+        <WorkoutProvider>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="workout-summary" options={{ headerShown: false }} />
+            <Stack.Screen name="settings" options={{ headerShown: false }} />
+            <Stack.Screen name="appearance" options={{ headerShown: false }} />
+            <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+            <Stack.Screen name="past-workouts" options={{ headerShown: false }} />
+            <Stack.Screen name="progress" options={{ headerShown: false }} />
+            <Stack.Screen name="highlights" options={{ headerShown: false }} />
+            <Stack.Screen name="today-workout" options={{ headerShown: false }} />
+            <Stack.Screen name="day-preview" options={{ headerShown: false }} />
+            <Stack.Screen name="week-plan" options={{ headerShown: false }} />
+            <Stack.Screen name="split-selector" options={{ headerShown: false }} />
+            <Stack.Screen name="goal-selector" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="login" options={{ headerShown: false }} />
+            <Stack.Screen name="register" options={{ headerShown: false }} />
+            <Stack.Screen name="newUser" options={{ headerShown: false }} />
+          </Stack>
+          <FloatingWorkoutMiniPlayer />
+          <StatusBar style="auto" />
+        </WorkoutProvider>
       </ThemeProvider>
     </AuthProvider>
   );

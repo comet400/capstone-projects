@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,6 +16,7 @@ import {
   WorkoutProgress,
   ExerciseCard,
 } from "@/app/components/Workout";
+import { useWorkout } from "@/app/context/WorkoutContext";
 
 const WORKOUT_PLAN_KEY = "active_workout_plan";
 const WORKOUT_HISTORY_KEY = "workout_history";
@@ -50,6 +52,7 @@ export type WorkoutHistoryEntry = {
 export default function TodayWorkoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ planJson?: string }>();
+  const { activeWorkout, startWorkout, pauseWorkout, resumeWorkout, completeSet, finishWorkout, isWorkoutActive, setShowMiniPlayer } = useWorkout();
   const [plan, setPlan] = useState<PlanData | null>(null);
   const [loading, setLoading] = useState(true);
   const [workoutStarted, setWorkoutStarted] = useState(false);
@@ -64,18 +67,34 @@ export default function TodayWorkoutScreen() {
     (sum, ex) => sum + (ex.prescription?.sets ?? 0),
     0
   );
-  const setsCompletedCount = Object.values(completedSets).flat().filter(Boolean).length;
+  
+  // Use either local state or global context for completed sets
+  const actualCompletedSets = activeWorkout ? activeWorkout.completedSets : completedSets;
+  const actualElapsedSeconds = activeWorkout ? activeWorkout.elapsedSeconds : elapsedSeconds;
+  const actualIsPaused = activeWorkout ? activeWorkout.isPaused : false;
+  
+  const setsCompletedCount = Object.values(actualCompletedSets).flat().filter(Boolean).length;
   const allSetsDone = totalSets > 0 && setsCompletedCount >= totalSets;
 
   useEffect(() => {
     const loadPlan = async () => {
       try {
+        let planData: PlanData | null = null;
+        
         if (params.planJson) {
-          const parsed = JSON.parse(params.planJson as string) as PlanData;
-          setPlan(parsed);
+          planData = JSON.parse(params.planJson as string) as PlanData;
+          setPlan(planData);
         } else {
           const stored = await AsyncStorage.getItem(WORKOUT_PLAN_KEY);
-          if (stored) setPlan(JSON.parse(stored) as PlanData);
+          if (stored) {
+            planData = JSON.parse(stored) as PlanData;
+            setPlan(planData);
+          }
+        }
+        
+        // If we have an active workout, sync state
+        if (activeWorkout && planData && activeWorkout.plan.plan_id === planData.plan.plan_id) {
+          setWorkoutStarted(true);
         }
       } catch (e) {
         console.warn("Failed to load workout plan", e);
@@ -84,27 +103,41 @@ export default function TodayWorkoutScreen() {
       }
     };
     loadPlan();
-  }, [params.planJson]);
+  }, [params.planJson, activeWorkout]);
 
+  // Handle timer from context
   useEffect(() => {
     if (!workoutStarted || workoutCompleted) return;
+    
+    // If we have an active workout from context, use that timer
+    if (activeWorkout) {
+      // Timer is handled by context
+      return;
+    }
+    
+    // Local timer fallback
     const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
     return () => clearInterval(interval);
-  }, [workoutStarted, workoutCompleted]);
+  }, [workoutStarted, workoutCompleted, activeWorkout]);
 
+  // Handle workout completion
   useEffect(() => {
     if (!allSetsDone || workoutCompleted) return;
+    
     setWorkoutCompleted(true);
-    setTotalDurationSeconds(elapsedSeconds);
+    const finalDuration = actualElapsedSeconds;
+    setTotalDurationSeconds(finalDuration);
+    
     const workoutId = `${plan?.plan?.plan_id ?? "unknown"}-${day?.plan_day_id ?? "unknown"}`;
     const entry: WorkoutHistoryEntry = {
       date: new Date().toISOString(),
       workoutId,
-      totalDuration: elapsedSeconds,
+      totalDuration: finalDuration,
       exercisesCompleted: exercises.length,
       setsCompleted: totalSets,
       workoutName: plan?.plan?.name,
     };
+    
     AsyncStorage.getItem(WORKOUT_HISTORY_KEY).then((raw) => {
       const history: WorkoutHistoryEntry[] = raw ? JSON.parse(raw) : [];
       AsyncStorage.setItem(
@@ -112,17 +145,56 @@ export default function TodayWorkoutScreen() {
         JSON.stringify([entry, ...history].slice(0, 200))
       );
     });
-  }, [allSetsDone, workoutCompleted, elapsedSeconds, plan, day, exercises.length, totalSets]);
+    
+    // Finish workout in context
+    if (activeWorkout) {
+      finishWorkout();
+    }
+  }, [allSetsDone, workoutCompleted, actualElapsedSeconds, plan, day, exercises.length, totalSets, activeWorkout, finishWorkout]);
 
   const handleSetToggle = useCallback((exerciseId: number, setIndex: number) => {
-    setCompletedSets((prev) => {
-      const arr = prev[String(exerciseId)] ?? [];
-      const next = [...arr];
-      while (next.length <= setIndex) next.push(false);
-      next[setIndex] = !next[setIndex];
-      return { ...prev, [String(exerciseId)]: next };
-    });
-  }, []);
+    if (activeWorkout) {
+      // Use global context
+      completeSet(exerciseId, setIndex);
+    } else {
+      // Local state fallback
+      setCompletedSets((prev) => {
+        const arr = prev[String(exerciseId)] ?? [];
+        const next = [...arr];
+        while (next.length <= setIndex) next.push(false);
+        next[setIndex] = !next[setIndex];
+        return { ...prev, [String(exerciseId)]: next };
+      });
+    }
+  }, [activeWorkout, completeSet]);
+
+  const handleStartWorkout = () => {
+    if (plan) {
+      startWorkout(plan.plan, plan.day);
+      setWorkoutStarted(true);
+    }
+  };
+
+  const handleBackPress = () => {
+  if (workoutStarted && !workoutCompleted && activeWorkout) {
+    // Workout in progress, show mini-player and go back immediately
+    setShowMiniPlayer(true);
+    router.back();
+  } else {
+    // All other cases just go back
+    router.back();
+  }
+};
+
+  const handlePauseResume = () => {
+    if (activeWorkout) {
+      if (activeWorkout.isPaused) {
+        resumeWorkout();
+      } else {
+        pauseWorkout();
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -184,7 +256,7 @@ export default function TodayWorkoutScreen() {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.headerBack}>
+          <Pressable onPress={handleBackPress} style={styles.headerBack}>
             <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
           </Pressable>
           <Text style={styles.headerTitle}>Today's Workout</Text>
@@ -207,7 +279,7 @@ export default function TodayWorkoutScreen() {
           </View>
           <Pressable
             style={styles.primaryButton}
-            onPress={() => setWorkoutStarted(true)}
+            onPress={handleStartWorkout}
           >
             <Text style={styles.primaryButtonText}>Start Exercise</Text>
           </Pressable>
@@ -219,17 +291,29 @@ export default function TodayWorkoutScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.headerBack}>
+        <Pressable onPress={handleBackPress} style={styles.headerBack}>
           <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
         </Pressable>
         <Text style={styles.headerTitle}>{plan.plan.name}</Text>
+        {activeWorkout && (
+          <Pressable onPress={handlePauseResume} style={styles.pauseButton}>
+            <Ionicons 
+              name={activeWorkout.isPaused ? "play" : "pause"} 
+              size={24} 
+              color="#6366F1" 
+            />
+          </Pressable>
+        )}
       </View>
-      <WorkoutTimer elapsedSeconds={elapsedSeconds} isRunning={!workoutCompleted} />
+      <WorkoutTimer 
+        elapsedSeconds={actualElapsedSeconds} 
+        isRunning={workoutStarted && !workoutCompleted && activeWorkout ? !activeWorkout.isPaused : true} 
+      />
       <WorkoutProgress
         setsCompleted={setsCompletedCount}
         totalSets={totalSets}
         exercisesCompleted={exercises.filter((ex) => {
-          const arr = completedSets[String(ex.exercise_id)] ?? [];
+          const arr = actualCompletedSets[String(ex.exercise_id)] ?? [];
           const sets = ex.prescription?.sets ?? 0;
           return Array.from({ length: sets }, (_, i) => arr[i]).every(Boolean);
         }).length}
@@ -242,7 +326,7 @@ export default function TodayWorkoutScreen() {
             name={ex.name}
             prescription={ex.prescription ?? { sets: 0, reps: 0 }}
             targetMuscles={ex.target_muscles}
-            completedSets={completedSets[String(ex.exercise_id)] ?? []}
+            completedSets={actualCompletedSets[String(ex.exercise_id)] ?? []}
             onSetToggle={(i) => handleSetToggle(ex.exercise_id, i)}
           />
         ))}
@@ -269,12 +353,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 56,
     paddingBottom: 16,
   },
   headerBack: { marginRight: 12 },
-  headerTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A" },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A", flex: 1 },
+  pauseButton: { padding: 8 },
   overviewCard: {
     marginHorizontal: 16,
     padding: 20,
