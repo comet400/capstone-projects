@@ -113,29 +113,6 @@ const gridStyles = StyleSheet.create({
 });
 
 // ── Reco card ───────────────────────────────────────────────────
-function RecoCard({ source, label }: { source: any; label: string }) {
-  return (
-    <View style={recoStyles.wrap}>
-      <Image source={source} style={recoStyles.image} resizeMode="cover" />
-      <View style={recoStyles.scrim} />
-      <Text style={recoStyles.label}>{label}</Text>
-    </View>
-  );
-}
-
-const recoStyles = StyleSheet.create({
-  wrap: {
-    width: 160, height: 120, borderRadius: 18,
-    overflow: "hidden", marginRight: 12, position: "relative",
-  },
-  image: { width: "100%", height: "100%" },
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(23,28,29,0.28)" },
-  label: {
-    position: "absolute", bottom: 10, left: 12,
-    color: "#FFFFFF", fontSize: 12, fontWeight: "800", letterSpacing: 0.2,
-  },
-});
-
 // ── Main Screen ─────────────────────────────────────────────────
 export default function ProfileScreen() {
   const router = useRouter();
@@ -354,27 +331,6 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* Recommended */}
-        <Animated.View style={[{ opacity: sectionFade }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Recommended for you</Text>
-            <Pressable style={styles.viewAllBtn}>
-              <Text style={styles.viewAllText}>View All</Text>
-              <Ionicons name="arrow-forward" size={12} color="#2AA8FF" />
-            </Pressable>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingRight: 4 }}
-          >
-            <RecoCard source={require("@/assets/images/home/reco1.jpg")} label="HIIT Cardio" />
-            <RecoCard source={require("@/assets/images/home/reco2.jpg")} label="Strength Builder" />
-            <RecoCard source={require("@/assets/images/home/featured.jpg")} label="Core Blast" />
-          </ScrollView>
-        </Animated.View>
-
         <View style={{ height: 120 }} />
       </ScrollView>
     </View>
@@ -442,11 +398,4 @@ const styles = StyleSheet.create({
 
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 28 },
 
-  sectionHeader: {
-    flexDirection: "row", justifyContent: "space-between",
-    alignItems: "center", marginBottom: 14,
-  },
-  sectionTitle: { fontSize: 17, fontWeight: "800", letterSpacing: -0.3 },
-  viewAllBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  viewAllText: { color: "#2AA8FF", fontSize: 12, fontWeight: "700" },
 });

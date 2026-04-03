@@ -25,7 +25,7 @@ type ExerciseData = {
   exercise_id: number;
   name: string;
   target_muscles: string | null;
-  prescription: { sets: number; reps: number };
+  prescription: { sets: number; reps: number; duration_seconds?: number; rest_seconds?: number };
 };
 
 type DayData = {
@@ -47,6 +47,15 @@ export type WorkoutHistoryEntry = {
   exercisesCompleted: number;
   setsCompleted: number;
   workoutName?: string;
+  exercises?: Array<{
+    exerciseId: number;
+    name: string;
+    targetMuscles: string | null;
+    sets: number;
+    reps: number;
+    durationSeconds?: number;
+    restSeconds?: number;
+  }>;
 };
 
 export default function TodayWorkoutScreen() {
@@ -136,6 +145,15 @@ export default function TodayWorkoutScreen() {
       exercisesCompleted: exercises.length,
       setsCompleted: totalSets,
       workoutName: plan?.plan?.name,
+      exercises: exercises.map((ex) => ({
+        exerciseId: ex.exercise_id,
+        name: ex.name,
+        targetMuscles: ex.target_muscles,
+        sets: ex.prescription?.sets ?? 0,
+        reps: ex.prescription?.reps ?? 0,
+        durationSeconds: ex.prescription?.duration_seconds,
+        restSeconds: ex.prescription?.rest_seconds,
+      })),
     };
     
     AsyncStorage.getItem(WORKOUT_HISTORY_KEY).then((raw) => {

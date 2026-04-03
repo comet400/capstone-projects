@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/app/config/api";
 import { useTheme } from "@/app/context/ThemeContext";
@@ -222,6 +223,7 @@ function EmptyState({ fadeAnim, colors }: { fadeAnim: Animated.Value; colors: Th
 export default function WorkoutsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const [workouts, setWorkouts] = useState<WorkoutRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -354,6 +356,7 @@ export default function WorkoutsScreen() {
           style={[
             styles.header,
             {
+              marginTop: insets.top + 12,
               opacity: headerFade,
               transform: [{ translateY: headerSlide }],
             },
@@ -488,7 +491,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 16,
     marginBottom: 20,
   },
   headerTitle: {
