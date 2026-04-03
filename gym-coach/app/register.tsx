@@ -307,7 +307,7 @@ export default function RegisterScreen() {
                 <Text style={styles.mismatchText}>Passwords don't match</Text>
               )}
               {passwordsMatch && (
-                <Text style={styles.matchText}>Passwords match ✓</Text>
+                <Text style={styles.matchText}>Passwords match</Text>
               )}
             </View>
 

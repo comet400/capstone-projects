@@ -37,6 +37,10 @@ async function runMigrations() {
       ALTER TABLE users
         ADD COLUMN IF NOT EXISTS fitness_goal TEXT DEFAULT 'gain_muscle';
     `);
+    await pool.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS profile_image TEXT;
+    `);
     // Remove mixed/compound exercises that don't fit strict split rules
     await pool.query(`
       DELETE FROM workout_plan_exercises

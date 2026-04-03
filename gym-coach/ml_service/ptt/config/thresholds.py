@@ -3,8 +3,8 @@ Detection and analysis thresholds - Enhanced Dynamic Grading System
 """
 
 # Pose detection thresholds
-POSE_CONFIDENCE_THRESHOLD = 0.25
-KEYPOINT_CONFIDENCE_THRESHOLD = 0.5
+POSE_CONFIDENCE_THRESHOLD = 0.20
+KEYPOINT_CONFIDENCE_THRESHOLD = 0.35
 
 # Quality scoring
 QUALITY_SCORE_MAX = 100.0
@@ -392,12 +392,12 @@ BICEP_CURL_GRADING = {
         "metric_type": "ratios",
         "metric_key": "elbow_drift",
         "thresholds": {
-            "excellent": 0.04,
-            "good": 0.07,
-            "acceptable": 0.10,
-            "poor": 0.18
+            "excellent": 0.08,
+            "good": 0.14,
+            "acceptable": 0.22,
+            "poor": 0.35
         },
-        "severity_curve": "quadratic",
+        "severity_curve": "linear",
         "description": "Elbows remain pinned"
     },
 

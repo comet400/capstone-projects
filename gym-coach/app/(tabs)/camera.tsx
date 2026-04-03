@@ -117,6 +117,7 @@ export default function CameraScreen() {
   const [processingStep, setProcessingStep] = useState(0);
   const [facing, setFacing] = useState<"front" | "back">("back");
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null);
+  const [includeGif, setIncludeGif] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [pendingResult, setPendingResult] = useState<{
     data: any;
@@ -333,6 +334,22 @@ export default function CameraScreen() {
     }
   };
 
+  const handleGifToggle = () => {
+    if (includeGif) {
+      setIncludeGif(false);
+      return;
+    }
+
+    Alert.alert(
+      "Enable GIF Replay?",
+      "GIF replay requires heavier analysis and can greatly increase processing time.",
+      [
+        { text: "Keep Fast Mode", style: "cancel" },
+        { text: "Enable GIF", onPress: () => setIncludeGif(true) },
+      ]
+    );
+  };
+
   const pollForResult = async (
     jobId: string,
     uri: string,
@@ -402,7 +419,7 @@ export default function CameraScreen() {
           uploadType: FileSystem.FileSystemUploadType.MULTIPART,
           fieldName: "video",
           mimeType: "video/mp4",
-          parameters: { exercise: exerciseLabel },
+          parameters: { exercise: exerciseLabel, include_gif: includeGif ? "true" : "false" },
         },
         () => {}
       );
@@ -609,6 +626,19 @@ export default function CameraScreen() {
               Choose an exercise before recording
             </Text>
           </View>
+        )}
+
+        {!isRecording && (
+          <Pressable style={styles.gifOptionRow} onPress={handleGifToggle}>
+            <Ionicons
+              name={includeGif ? "film-outline" : "image-outline"}
+              size={15}
+              color={includeGif ? "#FACC15" : "#9E9E9E"}
+            />
+            <Text style={[styles.gifOptionText, includeGif && styles.gifOptionTextActive]}>
+              {includeGif ? "GIF replay on - slower analysis" : "Fast mode - single trace image"}
+            </Text>
+          </Pressable>
         )}
       </View>
 

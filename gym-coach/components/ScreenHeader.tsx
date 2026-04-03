@@ -38,7 +38,7 @@ export function ScreenHeader({
 
             {/* Action Button (Crown) */}
             <Pressable style={styles.actionBtn}>
-                <Text style={styles.actionIcon}>👑</Text>
+                <Ionicons name="ribbon-outline" size={IconSizes.md} color={Colors.iconDark} />
             </Pressable>
         </View>
     );
@@ -68,9 +68,6 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primary,
         alignItems: "center",
         justifyContent: "center",
-    },
-    actionIcon: {
-        fontSize: 18,
     },
     centerContent: {
         flexDirection: "row",

@@ -268,4 +268,24 @@ export const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+
+  gifOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 18,
+    backgroundColor: "#F4F4F4",
+  },
+
+  gifOptionText: {
+    color: "#9E9E9E",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  gifOptionTextActive: {
+    color: "#B7791F",
+  },
 });

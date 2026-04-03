@@ -53,21 +53,21 @@ function computeHighlights(stats: Stats, overview: Overview): Highlight[] {
     highlights.push({
       id: "streak-30",
       type: "achievement",
-      title: "30 Day Streak! 🔥",
+      title: "30 Day Streak",
       description: `Incredible! You've worked out for ${streak} consecutive days`,
       icon: "flame",
       color: "#F87171",
-      badge: "🔥",
+      badge: "HOT",
     });
   } else if (streak >= 7) {
     highlights.push({
       id: "streak-7",
       type: "achievement",
-      title: `${streak} Day Streak!`,
+      title: `${streak} Day Streak`,
       description: `You've completed workouts for ${streak} consecutive days`,
       icon: "flame",
       color: "#F87171",
-      badge: "🔥",
+      badge: "HOT",
     });
   } else if (streak >= 3) {
     highlights.push({
@@ -77,7 +77,7 @@ function computeHighlights(stats: Stats, overview: Overview): Highlight[] {
       description: `You're building momentum — ${streak} days in a row!`,
       icon: "flame",
       color: "#F87171",
-      badge: "🔥",
+      badge: "HOT",
     });
   }
 
@@ -102,7 +102,7 @@ function computeHighlights(stats: Stats, overview: Overview): Highlight[] {
             : "You're off to a great start!",
         icon: "trophy",
         color: "#FACC15",
-        badge: "🏆",
+        badge: "BEST",
       });
       break; // Only show the highest milestone
     }
@@ -117,7 +117,7 @@ function computeHighlights(stats: Stats, overview: Overview): Highlight[] {
       description: `Best score: ${stats.bestScore}/100 — your form is outstanding!`,
       icon: "star",
       color: "#4ADE80",
-      badge: "⭐",
+      badge: "TOP",
     });
   } else if (stats.bestScore >= 70) {
     highlights.push({
@@ -127,7 +127,7 @@ function computeHighlights(stats: Stats, overview: Overview): Highlight[] {
       description: `Best score: ${stats.bestScore}/100 — solid technique!`,
       icon: "star",
       color: "#4ADE80",
-      badge: "⭐",
+      badge: "TOP",
     });
   }
 
@@ -141,7 +141,7 @@ function computeHighlights(stats: Stats, overview: Overview): Highlight[] {
       description: "You've logged over 50 hours of training time!",
       icon: "time",
       color: "#2AA8FF",
-      badge: "⏱️",
+      badge: "TIME",
     });
   } else if (hours >= 10) {
     highlights.push({
@@ -151,7 +151,7 @@ function computeHighlights(stats: Stats, overview: Overview): Highlight[] {
       description: "Great progress — keep pushing!",
       icon: "time",
       color: "#2AA8FF",
-      badge: "⏱️",
+      badge: "TIME",
     });
   }
 
@@ -164,7 +164,7 @@ function computeHighlights(stats: Stats, overview: Overview): Highlight[] {
       description: "Over a thousand reps! Pure dedication!",
       icon: "repeat",
       color: "#8B5CF6",
-      badge: "💪",
+      badge: "REP",
     });
   } else if (stats.totalReps >= 100) {
     highlights.push({
@@ -174,7 +174,7 @@ function computeHighlights(stats: Stats, overview: Overview): Highlight[] {
       description: "Building strength rep by rep!",
       icon: "repeat",
       color: "#8B5CF6",
-      badge: "💪",
+      badge: "REP",
     });
   }
 
@@ -187,7 +187,7 @@ function computeHighlights(stats: Stats, overview: Overview): Highlight[] {
       description: "Complete your first workout to start earning highlights!",
       icon: "rocket",
       color: "#2AA8FF",
-      badge: "🚀",
+      badge: "GO",
     });
   }
 
@@ -341,7 +341,7 @@ export default function HighlightsScreen() {
           <View style={styles.featuredOverlay} />
           <View style={styles.featuredContent}>
             <Text style={styles.featuredBadge}>
-              {safeStats.totalWorkouts >= 50 ? "🏆" : safeStats.totalWorkouts >= 10 ? "⭐" : "🚀"}
+              {safeStats.totalWorkouts >= 50 ? "BEST" : safeStats.totalWorkouts >= 10 ? "TOP" : "GO"}
             </Text>
             <Text style={styles.featuredTitle}>
               {safeStats.totalWorkouts >= 50

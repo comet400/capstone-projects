@@ -48,6 +48,7 @@ router.post("/register", async (req, res) => {
         full_name: user.full_name,
         email: user.email,
         profile_completed: user.profile_completed,
+        profile_image: user.profile_image || null,
       },
     });
   } catch (err) {
@@ -104,6 +105,7 @@ router.post("/login", async (req, res) => {
         profile_completed: user.profile_completed,
         workout_split: user.workout_split || "ppl",
         fitness_goal: user.fitness_goal || "gain_muscle",
+        profile_image: user.profile_image || null,
       },
     });
 

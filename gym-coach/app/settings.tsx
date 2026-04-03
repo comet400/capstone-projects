@@ -6,7 +6,7 @@ import {
   ScrollView,
   Pressable,
 } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/app/context/AuthContext";
 import { useTheme } from "@/app/context/ThemeContext";
@@ -26,6 +26,12 @@ export default function SettingsScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       showsVerticalScrollIndicator={false}
     >
+      <Pressable
+        style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        onPress={() => router.back()}
+      >
+        <Ionicons name="arrow-back" size={20} color={colors.text} />
+      </Pressable>
       <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
         Manage your preferences
@@ -122,9 +128,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   title: {
-    marginTop: 60,
+    marginTop: 18,
     fontSize: 28,
     fontWeight: "800",
+  },
+  backButton: {
+    marginTop: 56,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
   },
   subtitle: {
     marginTop: 6,

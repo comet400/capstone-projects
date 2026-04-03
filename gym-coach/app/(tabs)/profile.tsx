@@ -8,6 +8,8 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -16,6 +18,7 @@ import { useTheme } from "@/app/context/ThemeContext";
 import { API_BASE_URL } from "@/app/config/api";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 
 const { width } = Dimensions.get("window");
 
@@ -136,12 +139,13 @@ const recoStyles = StyleSheet.create({
 // ── Main Screen ─────────────────────────────────────────────────
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user, token, updateUser } = useAuth();
   const { colors } = useTheme();
 
   const [workoutsCompleted, setWorkoutsCompleted] = useState<number | null>(null);
   const [streak, setStreak] = useState<number | null>(null);
   const [formScore, setFormScore] = useState<number | null>(null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
 
   // Fetch dashboard overview stats + form score
   useEffect(() => {
@@ -200,6 +204,57 @@ export default function ProfileScreen() {
 
   const displayName = user?.full_name ?? "Athlete";
   const firstName = displayName.split(" ")[0];
+  const avatarSource = user?.profile_image ? { uri: user.profile_image } : PROFILE_IMAGE;
+
+  const handleChangePhoto = async () => {
+    Alert.alert(
+      "Profile Photo",
+      "Choose a new photo for your profile.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Edit Profile", onPress: () => router.push("/edit-profile") },
+        {
+          text: "Change Photo",
+          onPress: async () => {
+            const storedToken = token || (await AsyncStorage.getItem("token"));
+            if (!storedToken) return;
+
+            const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permission.granted) {
+              Alert.alert("Permission Needed", "Photo library permission is required.");
+              return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ["images"],
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.75,
+              base64: true,
+            });
+
+            if (result.canceled || !result.assets?.[0]?.base64) return;
+
+            try {
+              setAvatarSaving(true);
+              const mime = result.assets[0].mimeType ?? "image/jpeg";
+              const profileImage = `data:${mime};base64,${result.assets[0].base64}`;
+              await axios.post(
+                `${API_BASE_URL}/api/profile/avatar`,
+                { profile_image: profileImage },
+                { headers: { Authorization: `Bearer ${storedToken}` } }
+              );
+              updateUser({ profile_image: profileImage });
+            } catch (err: any) {
+              Alert.alert("Error", err?.response?.data?.message ?? "Could not update profile photo.");
+            } finally {
+              setAvatarSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const stats = [
     { val: workoutsCompleted != null ? String(workoutsCompleted) : "—", label: "Workouts" },
@@ -242,13 +297,18 @@ export default function ProfileScreen() {
           ]}
         >
           <View style={styles.avatarRing}>
-            <Image source={PROFILE_IMAGE} style={styles.mainAvatar} resizeMode="cover" />
+            <Image source={avatarSource} style={styles.mainAvatar} resizeMode="cover" />
+            {avatarSaving && (
+              <View style={styles.avatarLoading}>
+                <ActivityIndicator color="#FFFFFF" />
+              </View>
+            )}
           </View>
           <Pressable
             style={[styles.editBadge, { borderColor: colors.isDark ? '#2A2A2A' : '#FFFFFF' }]}
-            onPress={() => router.push("/edit-profile")}
+            onPress={handleChangePhoto}
           >
-            <Ionicons name="pencil" size={14} color="#FFFFFF" />
+            <Ionicons name="camera-outline" size={15} color="#FFFFFF" />
           </Pressable>
         </Animated.View>
 
@@ -354,6 +414,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2, shadowRadius: 16, elevation: 8,
   },
   mainAvatar: { width: "100%", height: "100%", borderRadius: 70 },
+  avatarLoading: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 70,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   editBadge: {
     position: "absolute", bottom: 8, right: width / 2 - 82,
     width: 32, height: 32, borderRadius: 16,

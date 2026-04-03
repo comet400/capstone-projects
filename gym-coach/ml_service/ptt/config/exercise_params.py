@@ -65,7 +65,7 @@ BICEP_CURL_PARAMS = {
     "elbow_angle_down": 160,
 
     # Anti-cheating
-    "elbow_drift_max": 0.10,
+    "elbow_drift_max": 0.22,
     "shoulder_movement_max": 0.15,
     "torso_sway_max": 0.15,
 
@@ -76,11 +76,13 @@ BICEP_CURL_PARAMS = {
 
 DEADLIFT_PARAMS = {
     # Phase detection
-    "hip_angle_down": 65,
-    "hip_angle_up": 170,
+    "hip_angle_down": 115,
+    "hip_angle_up": 150,
+    "hinge_down": 0.28,
+    "hinge_up": 0.45,
 
     # Movement type validation
-    "knee_bend_max": 110,       # avoid squat-style DL
+    "knee_bend_max": 95,        # avoid squat-style DL
     "shin_verticality_max": 0.25,
 
     # Spine safety

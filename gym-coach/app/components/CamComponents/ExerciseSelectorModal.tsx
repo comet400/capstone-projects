@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/design";
+import { useTheme } from "@/app/context/ThemeContext";
 
 type Props = {
   visible: boolean;
@@ -24,14 +25,16 @@ export default function ExerciseSelectorModal({
   onSelect,
   onClose,
 }: Props) {
+  const { colors } = useTheme();
+
   return (
     <Modal visible={visible} transparent animationType="slide">
       <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
-          <View style={styles.handle} />
+        <Pressable style={[styles.sheet, { backgroundColor: colors.background }]} onPress={() => {}}>
+          <View style={[styles.handle, { backgroundColor: colors.surface }]} />
 
-          <Text style={styles.title}>Select Exercise</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.text }]}>Select Exercise</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Choose the exercise so the AI can give targeted feedback.
           </Text>
 
@@ -46,6 +49,7 @@ export default function ExerciseSelectorModal({
                 <Pressable
                   style={[
                     styles.option,
+                    { backgroundColor: colors.surface },
                     isSelected && styles.optionSelected,
                   ]}
                   onPress={() => onSelect(item)}
@@ -53,6 +57,7 @@ export default function ExerciseSelectorModal({
                   <Text
                     style={[
                       styles.optionText,
+                      { color: colors.textSecondary },
                       isSelected && styles.optionTextSelected,
                     ]}
                   >

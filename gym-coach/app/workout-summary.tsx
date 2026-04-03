@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/app/config/api";
+import { useTheme } from "@/app/context/ThemeContext";
 
 const WORKOUT_IMAGE = require("@/assets/images/home/featured.jpg");
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -657,6 +658,7 @@ const repStyles = StyleSheet.create({
 export default function WorkoutSummaryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ report?: string; videoUri?: string; workoutId?: string }>();
+  const { colors } = useTheme();
 
   const [report, setReport] = useState<AnalysisReport>(DEMO_REPORT);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
@@ -789,7 +791,7 @@ export default function WorkoutSummaryScreen() {
   );
 
   return (
-    <View style={S.root}>
+    <View style={[S.root, { backgroundColor: colors.background }]}>
       <ScrollView style={S.scroll} contentContainerStyle={S.content} showsVerticalScrollIndicator={false}>
 
         {/* ── HERO ──────────────────────────────────────────────────────── */}
@@ -899,7 +901,7 @@ export default function WorkoutSummaryScreen() {
             <Text style={S.sectionLabel}>FORM ANALYSIS</Text>
             <View style={S.skeletonCard}>
               <Image source={{ uri: annotatedGif ?? annotatedFrame! }} style={S.skeletonImage} resizeMode="contain" />
-              {annotatedGif && <Text style={S.skeletonCaption}>Worst-scoring rep · looping</Text>}
+              {annotatedGif && <Text style={S.skeletonCaption}>First rep replay - looping</Text>}
               <View style={S.legendRow}>
                 {[["#4ADE80","Good"], ["#FACC15","Borderline"], ["#F87171","Needs work"]].map(([c, l]) => (
                   <View key={l} style={S.legendItem}>
@@ -928,7 +930,7 @@ export default function WorkoutSummaryScreen() {
           <View style={S.aiRow}>
             <View>
               <LinearGradient colors={[tierC1, tierC2]} style={S.aiAvatar}>
-                <Text style={{ fontSize: 20 }}>🤖</Text>
+                <Ionicons name="sparkles-outline" size={22} color="#000" />
               </LinearGradient>
               <View style={[S.aiOnline, { backgroundColor: tierC1 }]} />
             </View>
@@ -1023,6 +1025,8 @@ const S = StyleSheet.create({
   skeletonCard: { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.07)", overflow: "hidden" },
   skeletonImage: { width: "100%", aspectRatio: 4 / 3, backgroundColor: "#000" },
   skeletonCaption: { color: "rgba(255,255,255,0.28)", fontSize: 11, fontWeight: "600", textAlign: "center", paddingTop: 10, letterSpacing: 0.5 },
+  traceVideoButton: { alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: "rgba(74,222,128,0.10)", borderWidth: 1, borderColor: "rgba(74,222,128,0.25)" },
+  traceVideoButtonText: { color: "#4ADE80", fontSize: 12, fontWeight: "700" },
   legendRow: { flexDirection: "row", justifyContent: "center", gap: 20, paddingVertical: 14 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   legendDot: { width: 7, height: 7, borderRadius: 4 },

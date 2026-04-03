@@ -1,5 +1,5 @@
 import math
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 from .base_counter import BaseCounter
 from ..utils.models import RepData, FormMetrics, ExerciseType
 from ...config.exercise_params import SQUAT_PARAMS, PUSHUP_PARAMS, PULLUP_PARAMS, BENCH_PRESS_PARAMS, BICEP_CURL_PARAMS, DEADLIFT_PARAMS
@@ -46,6 +46,9 @@ class RepCounter(BaseCounter):
         self._angle_buffer: List[float] = []
         self._depth_buffer: List[float] = []
         self._smooth_window = 2         # Reduced from 3 for less lag at phase transitions
+        self._cycle_start_value: Optional[float] = None
+        self._cycle_peak_value: Optional[float] = None
+        self._cycle_rep_start: Optional[int] = None
 
     # ------------------------------------------------------------------
     # Core frame processing
@@ -97,12 +100,119 @@ class RepCounter(BaseCounter):
         duration = frame_num - self.current_rep_start
         return self.min_rep_frames <= duration <= self.max_rep_frames
 
+    def _reset_cycle(self, value: float) -> None:
+        self._cycle_start_value = value
+        self._cycle_peak_value = value
+        self._cycle_rep_start = None
+
+    def _process_decrease_then_increase(
+        self,
+        frame_num: int,
+        value: float,
+        active_state: str,
+        min_rom: float,
+        return_fraction: float = 0.55,
+    ) -> bool:
+        """Count a rep when a metric decreases enough, then returns enough."""
+        if math.isnan(value):
+            return False
+
+        if self._cycle_start_value is None or self._cycle_peak_value is None:
+            self._reset_cycle(value)
+
+        if self.state != active_state:
+            if value > self._cycle_start_value:
+                self._reset_cycle(value)
+
+            self._cycle_peak_value = min(self._cycle_peak_value, value)
+            rom = self._cycle_start_value - self._cycle_peak_value
+
+            if rom >= min_rom * 0.25 and self._cycle_rep_start is None:
+                self._cycle_rep_start = frame_num
+
+            if rom >= min_rom:
+                self.state = active_state
+                self.current_rep_start = (
+                    self._cycle_rep_start
+                    if self._cycle_rep_start is not None
+                    else frame_num
+                )
+            return False
+
+        self._cycle_peak_value = min(self._cycle_peak_value, value)
+        rom = self._cycle_start_value - self._cycle_peak_value
+        return_target = self._cycle_peak_value + max(min_rom * return_fraction, rom * return_fraction)
+
+        if rom >= min_rom and value >= return_target:
+            if self._check_duration(frame_num):
+                self._finalize_rep(frame_num)
+                self.state = self.initial_state
+                self._reset_cycle(value)
+                return True
+
+            self.state = self.initial_state
+            self.current_rep_start = None
+            self._reset_cycle(value)
+
+        return False
+
+    def _process_increase_then_decrease(
+        self,
+        frame_num: int,
+        value: float,
+        active_state: str,
+        min_rom: float,
+        return_fraction: float = 0.55,
+    ) -> bool:
+        """Count a rep when a metric increases enough, then returns enough."""
+        if math.isnan(value):
+            return False
+
+        if self._cycle_start_value is None or self._cycle_peak_value is None:
+            self._reset_cycle(value)
+
+        if self.state != active_state:
+            if value < self._cycle_start_value:
+                self._reset_cycle(value)
+
+            self._cycle_peak_value = max(self._cycle_peak_value, value)
+            rom = self._cycle_peak_value - self._cycle_start_value
+
+            if rom >= min_rom * 0.25 and self._cycle_rep_start is None:
+                self._cycle_rep_start = frame_num
+
+            if rom >= min_rom:
+                self.state = active_state
+                self.current_rep_start = (
+                    self._cycle_rep_start
+                    if self._cycle_rep_start is not None
+                    else frame_num
+                )
+            return False
+
+        self._cycle_peak_value = max(self._cycle_peak_value, value)
+        rom = self._cycle_peak_value - self._cycle_start_value
+        return_target = self._cycle_peak_value - max(min_rom * return_fraction, rom * return_fraction)
+
+        if rom >= min_rom and value <= return_target:
+            if self._check_duration(frame_num):
+                self._finalize_rep(frame_num)
+                self.state = self.initial_state
+                self._reset_cycle(value)
+                return True
+
+            self.state = self.initial_state
+            self.current_rep_start = None
+            self._reset_cycle(value)
+
+        return False
+
     # ------------------------------------------------------------------
     # Exercise-specific processors
     # ------------------------------------------------------------------
 
     def _process_squat(self, frame_num: int, metrics: FormMetrics) -> bool:
-        """Squat: track hip/knee depth ratio."""
+        """Squat: count visible down/up motion, not a perfect depth angle."""
         if "depth" not in metrics.ratios:
             return False
 
@@ -110,37 +220,16 @@ class RepCounter(BaseCounter):
         if math.isnan(depth):
             return False
 
-        down_th = SQUAT_PARAMS["depth_rom_parallel"]
-        up_th   = SQUAT_PARAMS["rep_up_threshold"]
-
-        rom_min = SQUAT_PARAMS["depth_score_rom_min"]
-        rom_max = SQUAT_PARAMS["depth_score_rom_max"]
-        down_th_ratio = max(0.0, min(1.0, (down_th - rom_min) / (rom_max - rom_min)))
-
-        if self.state == "up":
-            self._down_counter = self._soft_increment(self._down_counter, depth > down_th_ratio)
-
-            if self._down_counter >= self.min_phase_frames:
-                self.state = "down"
-                self.current_rep_start = frame_num
-                self._down_counter = 0
-
-        elif self.state == "down":
-            self._up_counter = self._soft_increment(self._up_counter, depth < up_th)
-
-            if self._up_counter >= self.min_phase_frames:
-                if self._check_duration(frame_num):
-                    self._finalize_rep(frame_num)
-                    self.state = "up"
-                    self._up_counter = 0
-                    return True
-                self.state = "up"
-                self._up_counter = 0
-
-        return False
+        return self._process_increase_then_decrease(
+            frame_num,
+            depth,
+            active_state="down",
+            min_rom=0.10,
+            return_fraction=0.45,
+        )
 
     def _process_pushup(self, frame_num: int, metrics: FormMetrics) -> bool:
-        """Push-up: track average elbow angle."""
+        """Push-up: count visible elbow bend/return motion."""
         if "avg_elbow" not in metrics.angles:
             return False
 
@@ -148,34 +237,16 @@ class RepCounter(BaseCounter):
         if math.isnan(elbow):
             return False
 
-        # Extra leniency on top of param defaults
-        down_th = PUSHUP_PARAMS["elbow_angle_down"] + 10
-        up_th   = PUSHUP_PARAMS["elbow_angle_up"]   - 10
-
-        if self.state == "up":
-            self._down_counter = self._soft_increment(self._down_counter, elbow < down_th)
-
-            if self._down_counter >= self.min_phase_frames:
-                self.state = "down"
-                self.current_rep_start = frame_num
-                self._down_counter = 0
-
-        elif self.state == "down":
-            self._up_counter = self._soft_increment(self._up_counter, elbow > up_th)
-
-            if self._up_counter >= self.min_phase_frames:
-                if self._check_duration(frame_num):
-                    self._finalize_rep(frame_num)
-                    self.state = "up"
-                    self._up_counter = 0
-                    return True
-                self.state = "up"
-                self._up_counter = 0
-
-        return False
+        return self._process_decrease_then_increase(
+            frame_num,
+            elbow,
+            active_state="down",
+            min_rom=30.0,
+            return_fraction=0.50,
+        )
 
     def _process_pullup(self, frame_num: int, metrics: FormMetrics) -> bool:
-        """Pull-up: starts hanging (down), rises (up), returns."""
+        """Pull-up: count visible arm bend/return motion."""
         if "avg_elbow" not in metrics.angles:
             return False
 
@@ -183,33 +254,16 @@ class RepCounter(BaseCounter):
         if math.isnan(elbow):
             return False
 
-        up_th   = PULLUP_PARAMS["elbow_angle_up"]
-        down_th = PULLUP_PARAMS["elbow_angle_down"]
-
-        if self.state == "down":
-            self._down_counter = self._soft_increment(self._down_counter, elbow < up_th)
-
-            if self._down_counter >= self.min_phase_frames:
-                self.state = "up"
-                self.current_rep_start = frame_num
-                self._down_counter = 0
-
-        elif self.state == "up":
-            self._up_counter = self._soft_increment(self._up_counter, elbow > down_th)
-
-            if self._up_counter >= self.min_phase_frames:
-                if self._check_duration(frame_num):
-                    self._finalize_rep(frame_num)
-                    self.state = "down"
-                    self._up_counter = 0
-                    return True
-                self.state = "down"
-                self._up_counter = 0
-
-        return False
+        return self._process_decrease_then_increase(
+            frame_num,
+            elbow,
+            active_state="up",
+            min_rom=28.0,
+            return_fraction=0.50,
+        )
 
     def _process_bench_press(self, frame_num: int, metrics: FormMetrics) -> bool:
-        """Bench press: track average elbow angle."""
+        """Bench press: count visible elbow bend/press motion."""
         if "avg_elbow" not in metrics.angles:
             return False
 
@@ -217,33 +271,16 @@ class RepCounter(BaseCounter):
         if math.isnan(elbow):
             return False
 
-        down_th = BENCH_PRESS_PARAMS["elbow_angle_down"]
-        up_th   = BENCH_PRESS_PARAMS["elbow_angle_up"]
-
-        if self.state == "up":
-            self._down_counter = self._soft_increment(self._down_counter, elbow < down_th)
-
-            if self._down_counter >= self.min_phase_frames:
-                self.state = "down"
-                self.current_rep_start = frame_num
-                self._down_counter = 0
-
-        elif self.state == "down":
-            self._up_counter = self._soft_increment(self._up_counter, elbow > up_th)
-
-            if self._up_counter >= self.min_phase_frames:
-                if self._check_duration(frame_num):
-                    self._finalize_rep(frame_num)
-                    self.state = "up"
-                    self._up_counter = 0
-                    return True
-                self.state = "up"
-                self._up_counter = 0
-
-        return False
+        return self._process_decrease_then_increase(
+            frame_num,
+            elbow,
+            active_state="down",
+            min_rom=25.0,
+            return_fraction=0.50,
+        )
 
     def _process_bicep_curl(self, frame_num: int, metrics: FormMetrics) -> bool:
-        """Bicep curl: starts extended (down), curls (up), returns."""
+        """Bicep curl: count visible curl/return motion."""
         if "avg_elbow" not in metrics.angles:
             return False
 
@@ -251,33 +288,16 @@ class RepCounter(BaseCounter):
         if math.isnan(elbow):
             return False
 
-        down_th = BICEP_CURL_PARAMS["elbow_angle_down"]
-        up_th   = BICEP_CURL_PARAMS["elbow_angle_up"]
-
-        if self.state == "down":
-            self._down_counter = self._soft_increment(self._down_counter, elbow < up_th)
-
-            if self._down_counter >= self.min_phase_frames:
-                self.state = "up"
-                self.current_rep_start = frame_num
-                self._down_counter = 0
-
-        elif self.state == "up":
-            self._up_counter = self._soft_increment(self._up_counter, elbow > down_th)
-
-            if self._up_counter >= self.min_phase_frames:
-                if self._check_duration(frame_num):
-                    self._finalize_rep(frame_num)
-                    self.state = "down"
-                    self._up_counter = 0
-                    return True
-                self.state = "down"
-                self._up_counter = 0
-
-        return False
+        return self._process_decrease_then_increase(
+            frame_num,
+            elbow,
+            active_state="up",
+            min_rom=28.0,
+            return_fraction=0.50,
+        )
 
     def _process_deadlift(self, frame_num: int, metrics: FormMetrics) -> bool:
-        """Deadlift: track hip angle (hinge)."""
+        """Deadlift: count visible hip hinge/stand motion."""
         if "hip_angle" not in metrics.angles:
             return False
 
@@ -285,30 +305,13 @@ class RepCounter(BaseCounter):
         if math.isnan(hip):
             return False
 
-        down_th = DEADLIFT_PARAMS["hip_angle_down"]
-        up_th   = DEADLIFT_PARAMS["hip_angle_up"]
-
-        if self.state == "up":
-            self._down_counter = self._soft_increment(self._down_counter, hip < down_th)
-
-            if self._down_counter >= self.min_phase_frames:
-                self.state = "down"
-                self.current_rep_start = frame_num
-                self._down_counter = 0
-
-        elif self.state == "down":
-            self._up_counter = self._soft_increment(self._up_counter, hip > up_th)
-
-            if self._up_counter >= self.min_phase_frames:
-                if self._check_duration(frame_num):
-                    self._finalize_rep(frame_num)
-                    self.state = "up"
-                    self._up_counter = 0
-                    return True
-                self.state = "up"
-                self._up_counter = 0
-
-        return False
+        return self._process_decrease_then_increase(
+            frame_num,
+            hip,
+            active_state="down",
+            min_rom=20.0,
+            return_fraction=0.50,
+        )
 
     # ------------------------------------------------------------------
     # Rep finalization

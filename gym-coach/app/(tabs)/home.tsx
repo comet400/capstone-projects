@@ -10,6 +10,7 @@ import {
 import { useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/app/config/api";
 import { useTheme } from "@/app/context/ThemeContext";
@@ -529,7 +530,7 @@ export default function HomeScreen() {
           onPress={() => router.push({ pathname: "/day-preview", params: { date: tomorrowDate.toISOString(), splitId } })}
         >
           <View style={styles.tomorrowIcon}>
-            <Text style={styles.tomorrowIconText}>🌙</Text>
+            <Ionicons name="calendar-outline" size={18} color="#2AA8FF" />
           </View>
           <View style={styles.workoutInfo}>
             <Text style={[styles.workoutName, { color: colors.text }]}>

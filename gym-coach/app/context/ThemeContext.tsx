@@ -82,7 +82,7 @@ const STORAGE_KEY = 'theme_preference';
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemScheme = useColorScheme();
-  const [preference, setPreferenceState] = useState<ThemePreference>('system');
+  const [preference, setPreferenceState] = useState<ThemePreference>('dark');
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((stored: string | null) => {

@@ -286,7 +286,7 @@ export default function CameraScreen() {
         setPendingResult({ data, uri });
         setIsProcessing(false);
         await sendLocalNotification(
-          "Workout Analysis Ready 💪",
+          "Workout Analysis Ready",
           `Your ${selectedExercise} analysis is complete. Tap to view your feedback.`
         );
         return;

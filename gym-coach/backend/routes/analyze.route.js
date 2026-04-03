@@ -11,7 +11,7 @@ const FASTAPI_URL = process.env.FASTAPI_URL || "http://localhost:8010/analyze";
 
 router.post("/", upload.single("video"), async (req, res) => {
     try {
-        const { exercise } = req.body;
+        const { exercise, include_gif } = req.body;
 
         if (!exercise) {
             return res.status(400).json({ error: "Missing 'exercise' field" });
@@ -22,6 +22,7 @@ router.post("/", upload.single("video"), async (req, res) => {
 
         const form = new FormData();
         form.append("exercise", exercise);
+        form.append("include_gif", include_gif === "true" ? "true" : "false");
         form.append("video", fs.createReadStream(req.file.path), {
             filename: "workout.mp4",
             contentType: "video/mp4",

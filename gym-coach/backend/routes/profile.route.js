@@ -42,6 +42,33 @@ router.post("/update", authMiddleware, async (req, res) => {
   }
 });
 
+// --- Update profile image ---
+router.post("/avatar", authMiddleware, async (req, res) => {
+  try {
+    const { profile_image } = req.body;
+
+    if (!profile_image || typeof profile_image !== "string") {
+      return res.status(400).json({ message: "Missing profile image" });
+    }
+
+    const result = await pool.query(
+      `UPDATE users
+       SET profile_image=$1, updated_at=NOW()
+       WHERE user_id=$2
+       RETURNING user_id, profile_image`,
+      [profile_image, req.userId]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Update workout split ---
 const VALID_SPLITS = ["ppl", "arnold", "ppl_arnold", "bro", "upper_lower", "full_body"];
 const VALID_GOALS = ["lose_weight", "gain_muscle", "endurance", "hybrid"];
@@ -103,7 +130,7 @@ router.post("/update-goal", authMiddleware, async (req, res) => {
 router.get("/", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT user_id, email, full_name, fitness_level, workout_location, profile_completed, workout_split, fitness_goal
+      `SELECT user_id, email, full_name, fitness_level, workout_location, profile_completed, workout_split, fitness_goal, profile_image
        FROM users
        WHERE user_id = $1`,
       [req.userId]

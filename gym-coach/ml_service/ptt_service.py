@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, HTTPException
 import tempfile, shutil, os
+import time
 from uuid import uuid4
 from typing import Dict, Any
 
@@ -15,31 +16,33 @@ app = FastAPI()
 detector = PoseDetector.create_detector("yolo")
 
 exercise_map = {
-    "Squat": (ExerciseType.SQUAT, SquatAnalyzer()),
-    "Pushup": (ExerciseType.PUSHUP, PushupAnalyzer()),
-    "Pullup": (ExerciseType.PULLUP, PullupAnalyzer()),
-    "Bench Press": (ExerciseType.BENCH_PRESS, BenchPressAnalyzer()),
-    "Bicep Curl": (ExerciseType.BICEP_CURL, BicepCurlAnalyzer()),
-    "Deadlift": (ExerciseType.DEADLIFT, DeadliftAnalyzer()),
+    "Squat": (ExerciseType.SQUAT, SquatAnalyzer),
+    "Pushup": (ExerciseType.PUSHUP, PushupAnalyzer),
+    "Pullup": (ExerciseType.PULLUP, PullupAnalyzer),
+    "Bench Press": (ExerciseType.BENCH_PRESS, BenchPressAnalyzer),
+    "Bicep Curl": (ExerciseType.BICEP_CURL, BicepCurlAnalyzer),
+    "Deadlift": (ExerciseType.DEADLIFT, DeadliftAnalyzer),
 }
 
 jobs: Dict[str, Dict[str, Any]] = {}
 
-def _process_job(job_id: str, exercise: str, ex_enum: ExerciseType, video_path: str):
+def _process_job(job_id: str, exercise: str, ex_enum: ExerciseType, video_path: str, include_gif: bool = False):
+    started_at = time.perf_counter()
     try:
         jobs[job_id]["status"] = "processing"
 
-        analyzer = exercise_map[exercise][1]
+        analyzer = exercise_map[exercise][1]()
         counter = RepCounter(ex_enum)
         processor = VideoProcessor(detector, analyzer, counter)
 
-        analysis = processor.process_video(video_path, ex_enum)
+        analysis = processor.process_video(video_path, ex_enum, include_gif=include_gif)
 
         jobs[job_id]["status"] = "done"
         jobs[job_id]["result"] = {
             "exercise": exercise,
             "total_reps": analysis.total_reps,
             "average_quality": float(analysis.average_quality),
+            "processing_seconds": round(time.perf_counter() - started_at, 2),
             "report": ReportFormatter.format_json_report(analysis),
             "annotated_frame": analysis.annotated_frame,
             "annotated_gif": analysis.annotated_gif,
@@ -48,6 +51,7 @@ def _process_job(job_id: str, exercise: str, ex_enum: ExerciseType, video_path: 
     except Exception as e:
         jobs[job_id]["status"] = "error"
         jobs[job_id]["error"] = str(e)
+        jobs[job_id]["processing_seconds"] = round(time.perf_counter() - started_at, 2)
 
     finally:
         try:
@@ -60,6 +64,7 @@ def _process_job(job_id: str, exercise: str, ex_enum: ExerciseType, video_path: 
 async def analyze(
     background_tasks: BackgroundTasks,
     exercise: str = Form(...),
+    include_gif: bool = Form(False),
     video: UploadFile = File(...)
 ):
     if exercise not in exercise_map:
@@ -75,9 +80,10 @@ async def analyze(
     jobs[job_id] = {
         "status": "queued",
         "exercise": exercise,
+        "include_gif": include_gif,
     }
 
-    background_tasks.add_task(_process_job, job_id, exercise, ex_enum, video_path)
+    background_tasks.add_task(_process_job, job_id, exercise, ex_enum, video_path, include_gif)
 
     return {"job_id": job_id, "status": "queued"}
 

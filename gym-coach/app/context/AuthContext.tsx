@@ -17,6 +17,7 @@ interface User {
   profile_completed: boolean;
   workout_split: string | null;
   fitness_goal: string | null;
+  profile_image: string | null;
 }
 
 interface AuthContextType {
